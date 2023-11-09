@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package msg;
+
+option go_package = "github.com/caldog20/go-overlay/msg";
+
+
+message RegisterRequest {
+  string user = 1;
+}
+
+message RegisterReply {
+  bool success = 1;
+  string uuid = 2;
+  string tunip = 3;
+}
+
+
+
+service ControlService {
+  rpc Register(RegisterRequest) returns (RegisterReply) {}
+}
