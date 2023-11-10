@@ -19,16 +19,20 @@ var clients []*msg.ClientInfoReply_Client
 func udptest(wg *sync.WaitGroup, id string) {
 	defer wg.Done()
 	remote := strings.Split(clients[0].Remote, ":")[0]
-	conn, _ := net.Dial("udp4", remote+":"+"5050")
+	conn, err := net.Dial("udp4", remote+":"+"5050")
+	if err != nil {
+		log.Fatal(err)
+	}
 	conn.Write([]byte("punchout"))
 	conn.Write([]byte("punchout"))
 	conn.Write([]byte("punchout"))
 	for {
 		buf := make([]byte, 500)
 		n, _ := conn.Read(buf)
-		s := fmt.Sprintf(string(buf[:n]))
-		log.Println(s)
-		if s == "goodbye" {
+		log.Printf("read bytes from socket %v", n)
+		log.Print(string(buf[:n]))
+
+		if fmt.Sprint(buf[:n]) == "goodbye" {
 			return
 		}
 	}
@@ -91,7 +95,6 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 
 		if len(clients) == 0 {
 			log.Println("no clients yet")
-			time.Sleep(time.Second * 2)
 		} else {
 			break
 		}
@@ -101,9 +104,13 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 	pb := []byte("punchout")
 	in := []byte("hellohellohello\n")
 	if doPunch {
+		time.Sleep(time.Second * 5)
 		// Write a few packets out first
 		remote := strings.Split(clients[0].Remote, ":")[0]
-		conn, _ := net.Dial("udp4", remote+":"+"5050")
+		conn, err := net.Dial("udp4", remote+":"+"5050")
+		if err != nil {
+			log.Fatal(err)
+		}
 		conn.Write(pb)
 		// Send Punch Request to client
 		client.Punch(ctx, &msg.PunchRequest{RequestorId: testclient.Uuid, PuncheeId: clients[0].Uuid})
