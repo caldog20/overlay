@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	con := flag.Bool("controller", true, "Enable Controller")
+	con := flag.Bool("controller", false, "Enable Controller")
 	caddr := flag.String("caddr", "localhost:5555", "")
 	punch := flag.Bool("punch", false, "")
 
