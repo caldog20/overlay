@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/caldog20/go-overlay/msg"
@@ -15,7 +16,8 @@ import (
 
 var clients []*msg.ClientInfoReply_Client
 
-func udptest(id string) {
+func udptest(wg *sync.WaitGroup, id string) {
+	defer wg.Done()
 	remote := strings.Split(clients[0].Remote, ":")[0]
 	conn, _ := net.Dial("udp4", remote+":"+"5050")
 	conn.Write([]byte("punchout"))
@@ -25,6 +27,7 @@ func udptest(id string) {
 		buf := make([]byte, 500)
 		n, _ := conn.Read(buf)
 		s := fmt.Sprintf(string(buf[:n]))
+		log.Println(s)
 		if s == "goodbye" {
 			return
 		}
@@ -32,6 +35,8 @@ func udptest(id string) {
 }
 
 func Run(ctx context.Context, caddr string, doPunch bool) {
+	var wg sync.WaitGroup
+
 	log.SetPrefix("client: ")
 	conn, err := grpc.DialContext(ctx, caddr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -56,7 +61,10 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 			log.Fatal(perr)
 		}
 
+		time.Sleep(time.Second * 5)
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for {
 				punch, err := pclient.Recv()
 				if err != nil {
@@ -65,19 +73,30 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 					return
 				}
 				log.Println("Received punch notification, doing punch out")
-				go udptest(punch.GetPuncher())
+				wg.Add(1)
+				go udptest(&wg, punch.GetPuncher())
 			}
 		}()
 	}
 
-	// Request info about other connected clients
-	ciresponse, rerr := client.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: testclient.Uuid})
-	if rerr != nil {
-		log.Printf("error sending/recv message: %v", rerr)
-		return
-	}
+	for {
+		// Request info about other connected clients
+		ciresponse, rerr := client.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: testclient.Uuid})
+		if rerr != nil {
+			log.Printf("error sending/recv message: %v", rerr)
+			return
+		}
 
-	clients = ciresponse.Clients
+		clients = ciresponse.Clients
+
+		if len(clients) == 0 {
+			log.Println("no clients yet")
+			time.Sleep(time.Second * 2)
+		} else {
+			break
+		}
+
+	}
 
 	pb := []byte("punchout")
 	in := []byte("hellohellohello\n")
@@ -102,6 +121,8 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 		conn.Write(in)
 		conn.Write([]byte("goodbye"))
 	}
+
+	wg.Wait()
 
 	// Deregister and quit
 
