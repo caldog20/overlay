@@ -31,7 +31,7 @@ func main() {
 	}()
 
 	if *con {
-		go controller.Run(ctx)
+		controller.Run(ctx)
 	} else {
 		testclient.Run(ctx, *caddr, *punch)
 	}
