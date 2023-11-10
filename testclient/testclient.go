@@ -20,14 +20,14 @@ func udptest(wg *sync.WaitGroup, id string) {
 	defer wg.Done()
 	remote := strings.Split(clients[0].Remote, ":")[0]
 	log.Printf("punching to remote %v", remote)
-	conn, err := net.Dial("udp4", remote+":"+"5050")
+	laddr, _ := net.ResolveUDPAddr("udp4", ":5050")
+	conn, err := net.ListenUDP("udp4", laddr)
+	raddr, _ := net.ResolveUDPAddr("udp4", remote+":"+"5050")
 	if err != nil {
 		log.Fatal(err)
 	}
-	w := bufio.NewWriter(conn)
 	r := bufio.NewReader(conn)
-	w.WriteString("punchingpunchiing")
-	w.WriteString("punchingpunchiing")
+	conn.WriteToUDP([]byte("punch"), raddr)
 	for {
 		s, err := r.ReadString(0xff)
 		if err != nil {
@@ -109,63 +109,27 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 		// Write a few packets out first
 		remote := strings.Split(clients[0].Remote, ":")[0]
 		log.Printf("requesting punch to remote %v", remote)
-		conn, err := net.Dial("udp4", remote+":"+"5050")
+		laddr, _ := net.ResolveUDPAddr("udp4", ":5050")
+		conn, err := net.ListenUDP("udp4", laddr)
+		raddr, _ := net.ResolveUDPAddr("udp4", remote+":"+"5050")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		w := bufio.NewWriter(conn)
 		// Send Punch Request to client
 		client.Punch(ctx, &msg.PunchRequest{RequestorId: testclient.Uuid, PuncheeId: clients[0].Uuid})
 		log.Println("sent punch request, starting to write data to remote")
 		// wait a few seconds
 		time.Sleep(time.Second * 3)
 		// Write more data
-
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("hello")
-		w.WriteByte(0xff)
-		w.WriteString("goodbye")
-		w.WriteByte(0xff)
+		conn.WriteToUDP([]byte("hellohellohello"), raddr)
+		conn.WriteToUDP([]byte{0xff}, raddr)
+		conn.WriteToUDP([]byte("hellohellohello"), raddr)
+		conn.WriteToUDP([]byte{0xff}, raddr)
+		conn.WriteToUDP([]byte("hellohellohello"), raddr)
+		conn.WriteToUDP([]byte{0xff}, raddr)
+		conn.WriteToUDP([]byte("goodbye"), raddr)
+		conn.WriteToUDP([]byte{0xff}, raddr)
 	}
 
 	wg.Wait()
