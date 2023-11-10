@@ -17,8 +17,39 @@ message RegisterReply {
   string tunip = 3;
 }
 
+message ClientInfoRequest {
+  string requester_id = 1;
+}
+
+message ClientInfoReply {
+  message Client {
+    string uuid = 1;
+    string user = 2;
+    string tunip = 3;
+    string remote = 4;
+  }
+
+  repeated Client clients = 1;
+  uint64 client_count = 2;
+}
+
+message PunchSubscribe {
+  string requestor_id = 1;
+}
+
+message PunchNotification {
+  string puncher = 1;
+}
+
+message PunchRequest {
+  string requestor_id = 1;
+  string punchee_id = 2;
+}
 
 
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
+  rpc ClientInfo(ClientInfoRequest) returns (ClientInfoReply) {}
+  rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}
+  rpc PunchNotifier(PunchSubscribe) returns (stream PunchNotification) {}
 }

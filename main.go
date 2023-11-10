@@ -15,6 +15,8 @@ import (
 func main() {
 
 	con := flag.Bool("controller", true, "Enable Controller")
+	caddr := flag.String("caddr", "localhost:5555", "")
+	punch := flag.Bool("punch", false, "")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -31,6 +33,6 @@ func main() {
 		go controller.Run(ctx)
 	}
 
-	testclient.Run(ctx)
+	testclient.Run(ctx, *caddr, *punch)
 
 }
