@@ -1,8 +1,8 @@
 package testclient
 
 import (
+	"bufio"
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -24,16 +24,14 @@ func udptest(wg *sync.WaitGroup, id string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	conn.Write([]byte("punchout"))
-	conn.Write([]byte("punchout"))
-	conn.Write([]byte("punchout"))
-	buf := make([]byte, 500)
+	w := bufio.NewWriter(conn)
+	r := bufio.NewReader(conn)
+	w.WriteString("punchingpunchiing")
+	w.WriteString("punchingpunchiing")
 	for {
-		n, _ := conn.Read(buf)
-		log.Printf("read bytes from socket %v", n)
-		log.Print(string(buf[:n]))
-
-		if fmt.Sprint(buf[:n]) == "goodbye" {
+		s, _ := r.ReadString(0xff)
+		log.Println(s)
+		if s == "goodbye" {
 			return
 		}
 	}
@@ -102,7 +100,7 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 	}
 
 	//pb := []byte("punchout")
-	in := []byte("hellohellohello\n")
+
 	if doPunch {
 		time.Sleep(time.Second * 5)
 		// Write a few packets out first
@@ -112,21 +110,23 @@ func Run(ctx context.Context, caddr string, doPunch bool) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		w := bufio.NewWriter(conn)
 		// Send Punch Request to client
 		client.Punch(ctx, &msg.PunchRequest{RequestorId: testclient.Uuid, PuncheeId: clients[0].Uuid})
 		log.Println("sent punch request, starting to write data to remote")
 		// wait a few seconds
 		time.Sleep(time.Second * 3)
 		// Write more data
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write(in)
-		conn.Write([]byte("goodbye"))
+
+		w.WriteString("hello")
+		w.WriteByte(0xff)
+		w.WriteString("hello")
+		w.WriteByte(0xff)
+		w.WriteString("hello")
+		w.WriteByte(0xff)
+		w.WriteString("goodbye")
+		w.WriteByte(0xff)
 	}
 
 	wg.Wait()
