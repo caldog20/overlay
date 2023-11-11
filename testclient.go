@@ -82,6 +82,7 @@ func RunClient(ctx context.Context, caddr string, username string, doPunch bool)
 			client.Remote = ciresponse.Remote
 			client.Id = uuid.MustParse(ciresponse.Uuid)
 			gclient.hosts.Store(client.Id.String(), client)
+			break
 		}
 
 		// Write a few packets out first
