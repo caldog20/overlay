@@ -68,13 +68,13 @@ func RunClient(ctx context.Context, caddr string, username string, doPunch bool)
 		client := &Client{}
 		for {
 			// Request info about other connected clients
-			ciresponse, err := gclient.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gclient.id, VpnIp: "192.168.1.2"})
+			ciresponse, err := gclient.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gclient.id, VpnIp: "192.168.1.1"})
 			if err != nil {
 				log.Printf("client not found maybe: %v", err)
 				continue
 			}
 
-			if ciresponse.Tunip != "192.168.1.2" {
+			if ciresponse.Tunip != "192.168.1.1" {
 				continue
 			}
 
