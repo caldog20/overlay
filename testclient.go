@@ -254,7 +254,7 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 				// query server about client, ask for punch, and store client
 				qresp, qerr := gc.msgclient.WhoIs(ctx, &msg.WhoIsIP{VpnIp: fwpacket.RemoteIP.String()})
 				if qerr != nil {
-					log.Println(err)
+					log.Println(qerr)
 					continue
 				}
 				raddr, rerr := net.ResolveUDPAddr("udp4", qresp.Remote)
