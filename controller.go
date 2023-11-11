@@ -40,7 +40,7 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 	newclient := &Client{
 		Hostname: req.Hostname,
 		VpnIP:    cip,
-		Remote:   strings.Split(remote, ":")[0] + req.Port,
+		Remote:   strings.Split(remote, ":")[0] + ":" + req.Port,
 	}
 
 	s.clients.Store(cip, newclient)

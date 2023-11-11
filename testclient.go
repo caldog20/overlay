@@ -259,7 +259,7 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 				}
 				raddr, rerr := net.ResolveUDPAddr("udp4", qresp.Remote)
 				if rerr != nil {
-					log.Println(err)
+					log.Println(rerr)
 					continue
 				}
 				// ask for punch and try again next time
