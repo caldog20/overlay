@@ -26,7 +26,7 @@ type GClient struct {
 	tunip string
 }
 
-func RunClient(ctx context.Context, caddr string, doPunch bool) {
+func RunClient(ctx context.Context, caddr string, username string, doPunch bool) {
 	log.SetPrefix("client: ")
 
 	gclient := &GClient{}
@@ -53,7 +53,7 @@ func RunClient(ctx context.Context, caddr string, doPunch bool) {
 	gclient.gconn = conn
 	gclient.msgclient = mc
 
-	err = gclient.Register(ctx, "")
+	err = gclient.Register(ctx, username)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func RunClient(ctx context.Context, caddr string, doPunch bool) {
 
 func (gc *GClient) Register(ctx context.Context, username string) error {
 	// Register Client
-	reply, err := gc.msgclient.Register(ctx, &msg.RegisterRequest{User: ""})
+	reply, err := gc.msgclient.Register(ctx, &msg.RegisterRequest{User: username})
 	if err != nil {
 		log.Printf("error sending/recv message: %v", err)
 		return errors.New("failed to register with controller")
