@@ -287,11 +287,11 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 		in := make([]byte, 1308)
 		fwpacket := &firewall.FWPacket{}
 		for {
-			n, err := gc.udpcon.Read(in)
+			n, raddr, err := gc.udpcon.ReadFromUDP(in)
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("read %v bytes from udp", n)
+			log.Printf("read %v bytes from udp remote: %s", n, raddr.String())
 			fwpacket, err = gc.fw.Parse(in[:n], true)
 			if err != nil {
 				log.Println(err)

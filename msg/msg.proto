@@ -14,6 +14,7 @@ message RegisterRequest {
 
 message RegisterReply {
   string vpn_ip = 1;
+  string uuid = 2;
 }
 
 message WhoIsIP {
@@ -36,7 +37,6 @@ message PunchRequest {
   string src_vpn_ip = 1;
   string dst_vpn_ip = 2;
 }
-
 
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
