@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -23,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ControlServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
+	Deregister(ctx context.Context, in *DeregisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	WhoIsIp(ctx context.Context, in *WhoIsIPRequest, opts ...grpc.CallOption) (*WhoIsIPReply, error)
 	RemoteList(ctx context.Context, in *RemoteListRequest, opts ...grpc.CallOption) (*RemoteListReply, error)
 }
@@ -38,6 +40,15 @@ func NewControlServiceClient(cc grpc.ClientConnInterface) ControlServiceClient {
 func (c *controlServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error) {
 	out := new(RegisterReply)
 	err := c.cc.Invoke(ctx, "/msg.ControlService/Register", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlServiceClient) Deregister(ctx context.Context, in *DeregisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/msg.ControlService/Deregister", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +78,7 @@ func (c *controlServiceClient) RemoteList(ctx context.Context, in *RemoteListReq
 // for forward compatibility
 type ControlServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterReply, error)
+	Deregister(context.Context, *DeregisterRequest) (*emptypb.Empty, error)
 	WhoIsIp(context.Context, *WhoIsIPRequest) (*WhoIsIPReply, error)
 	RemoteList(context.Context, *RemoteListRequest) (*RemoteListReply, error)
 	mustEmbedUnimplementedControlServiceServer()
@@ -78,6 +90,9 @@ type UnimplementedControlServiceServer struct {
 
 func (UnimplementedControlServiceServer) Register(context.Context, *RegisterRequest) (*RegisterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedControlServiceServer) Deregister(context.Context, *DeregisterRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Deregister not implemented")
 }
 func (UnimplementedControlServiceServer) WhoIsIp(context.Context, *WhoIsIPRequest) (*WhoIsIPReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WhoIsIp not implemented")
@@ -112,6 +127,24 @@ func _ControlService_Register_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControlServiceServer).Register(ctx, req.(*RegisterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControlService_Deregister_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeregisterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServiceServer).Deregister(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/msg.ControlService/Deregister",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServiceServer).Deregister(ctx, req.(*DeregisterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -162,6 +195,10 @@ var ControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Register",
 			Handler:    _ControlService_Register_Handler,
+		},
+		{
+			MethodName: "Deregister",
+			Handler:    _ControlService_Deregister_Handler,
 		},
 		{
 			MethodName: "WhoIsIp",

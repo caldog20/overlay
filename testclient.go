@@ -47,7 +47,6 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 	if err != nil {
 		log.Fatalf("error connecting to grpc server: %v", err)
 	}
-	defer conn.Close()
 
 	udpcon, err := net.ListenPacket("udp4", ":2222")
 	if err != nil {
@@ -79,6 +78,11 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 	}
 
 	<-ctx.Done()
+
+	gclient.msgclient.Deregister(ctx, &msg.DeregisterRequest{
+		Uuid: gclient.id,
+	})
+
 	gclient.udpcon.Close()
 	gclient.gconn.Close()
 

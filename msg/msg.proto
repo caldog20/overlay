@@ -22,6 +22,10 @@ message RegisterReply {
   string uuid = 2;
 }
 
+message DeregisterRequest {
+  string uuid = 1;
+}
+
 message RemoteListRequest {
   string uuid = 1;
 }
@@ -40,6 +44,7 @@ message WhoIsIPReply {
 
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
+  rpc Deregister(DeregisterRequest) returns (google.protobuf.Empty) {}
   rpc WhoIsIp(WhoIsIPRequest) returns (WhoIsIPReply) {}
   rpc RemoteList(RemoteListRequest) returns (RemoteListReply) {}
   //  rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}

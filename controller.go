@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
 	"runtime"
@@ -59,6 +60,30 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 		VpnIp: newclient.VpnIP,
 		Uuid:  newclient.Id,
 	}, nil
+}
+
+func (s *ControlServer) Deregister(ctx context.Context, req *msg.DeregisterRequest) (*emptypb.Empty, error) {
+	if req.Uuid == "" {
+		return nil, errors.New("uuid must not be nil")
+	}
+
+	//p, _ := peer.FromContext(ctx)
+	//remote := p.Addr.String()
+
+	s.clients.Delete(req.Uuid)
+
+	// change this to return a bool for found
+	ip, err := s.ipman.WhoIsByID(req.Uuid)
+	if err != nil {
+		log.Printf("ip not found: %v", err)
+	}
+
+	err = s.ipman.DeallocateIP(ip)
+	if err != nil {
+		log.Printf("cannot deallocate ip: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*msg.WhoIsIPReply, error) {
