@@ -75,7 +75,7 @@ func RunClient(ctx context.Context, caddr string, username string, doPunch bool)
 			}
 
 			if ciresponse.Tunip != "192.168.1.1" {
-				continue
+				log.Printf("got wrong tunip: %v", ciresponse.Tunip)
 			}
 
 			client.TunIP = ciresponse.Tunip
