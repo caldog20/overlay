@@ -71,7 +71,7 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 
 	err = gclient.Subscribe(ctx)
 
-	go gclient.Listen(ctx)
+	//go gclient.Listen(ctx)
 
 	//pb := []byte("punchout")
 
@@ -293,6 +293,10 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 			}
 			log.Printf("read %v bytes from udp", n)
 			fwpacket, err = gc.fw.Parse(in[:n], true)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
 			drop := gc.fw.Drop(fwpacket)
 			if drop {
 				log.Println("fw dropping packet")
