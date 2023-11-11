@@ -79,9 +79,12 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 
 	<-ctx.Done()
 
-	gclient.msgclient.Deregister(ctx, &msg.DeregisterRequest{
+	_, err = gclient.msgclient.Deregister(ctx, &msg.DeregisterRequest{
 		Uuid: gclient.id,
 	})
+	if err != nil {
+		log.Println(err)
+	}
 
 	gclient.udpcon.Close()
 	gclient.gconn.Close()
