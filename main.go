@@ -7,9 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/caldog20/go-overlay/controller"
-	"github.com/caldog20/go-overlay/testclient"
 )
 
 func main() {
@@ -31,9 +28,9 @@ func main() {
 	}()
 
 	if *con {
-		controller.Run(ctx)
+		RunController(ctx)
 	} else {
-		testclient.Run(ctx, *caddr, *punch)
+		RunClient(ctx, *caddr, *punch)
 	}
 
 }

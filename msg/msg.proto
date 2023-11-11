@@ -19,6 +19,8 @@ message RegisterReply {
 
 message ClientInfoRequest {
   string requester_id = 1;
+  bool bulk = 2;
+  string client_id = 3;
 }
 
 message ClientInfoReply {

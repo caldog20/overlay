@@ -1,4 +1,4 @@
-package controller
+package main
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
+	"runtime"
+	"strings"
 	"sync"
 
-	"github.com/caldog20/go-overlay/client"
 	"github.com/caldog20/go-overlay/ipam"
 	"github.com/caldog20/go-overlay/msg"
 	"github.com/google/uuid"
@@ -51,11 +52,11 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 	p, _ := peer.FromContext(ctx)
 	remote := p.Addr.String()
 
-	newclient := &client.Client{
+	newclient := &Client{
 		Id:     cid,
 		User:   req.User,
 		TunIP:  cip,
-		Remote: remote,
+		Remote: strings.Split(remote, ":")[0] + ":2222",
 	}
 
 	s.clients.Store(newclient.Id.String(), newclient)
@@ -80,19 +81,36 @@ func (s *ControlServer) ClientInfo(ctx context.Context, req *msg.ClientInfoReque
 
 	var clientList []*msg.ClientInfoReply_Client
 
-	s.clients.Range(func(k, v interface{}) bool {
-		cid := fmt.Sprint(k)
-		c := v.(*client.Client)
-		if cid != rid {
+	if req.Bulk {
+		s.clients.Range(func(k, v interface{}) bool {
+			cid := fmt.Sprint(k)
+			c := v.(*Client)
+			if cid != rid {
+				clientList = append(clientList, &msg.ClientInfoReply_Client{
+					Uuid:   c.Id.String(),
+					User:   c.User,
+					Tunip:  c.TunIP,
+					Remote: c.Remote,
+				})
+			}
+			return true
+		})
+
+	} else {
+		cquery, found := s.clients.Load(req.ClientId)
+
+		if !found {
+			return nil, errors.New("client not found")
+		} else {
+			result := cquery.(*Client)
 			clientList = append(clientList, &msg.ClientInfoReply_Client{
-				Uuid:   c.Id.String(),
-				User:   c.User,
-				Tunip:  c.TunIP,
-				Remote: c.Remote,
+				Uuid:   result.Id.String(),
+				User:   result.User,
+				Tunip:  result.TunIP,
+				Remote: result.Remote,
 			})
 		}
-		return true
-	})
+	}
 
 	return &msg.ClientInfoReply{
 		Clients:     clientList,
@@ -108,7 +126,7 @@ func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.Contro
 		return errors.New("requesting client not registered")
 	}
 
-	c := cl.(*client.Client)
+	c := cl.(*Client)
 
 	c.PunchStream = stream
 	c.Finished = fin
@@ -121,12 +139,17 @@ func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.Contro
 		select {
 		case <-fin:
 			log.Print("client stream closing")
+			s.cipam.DeallocateIP(c.TunIP)
+			s.clients.Delete(c.Id.String())
 			return nil
 		case <-ctx.Done():
 			log.Print("client disconnected")
+			s.cipam.DeallocateIP(c.TunIP)
+			s.clients.Delete(c.Id.String())
 			return nil
 		}
 	}
+
 }
 
 func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*emptypb.Empty, error) {
@@ -145,7 +168,7 @@ func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*empt
 		return nil, errors.New("punchee client not found")
 	}
 
-	punchee := p.(*client.Client)
+	punchee := p.(*Client)
 	if err := punchee.PunchStream.Send(&msg.PunchNotification{Puncher: rid}); err != nil {
 		select {
 		case punchee.Finished <- true:
@@ -159,7 +182,8 @@ func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*empt
 	return &emptypb.Empty{}, nil
 }
 
-func Run(ctx context.Context) {
+func RunController(ctx context.Context) {
+	runtime.LockOSThread()
 
 	lis, err := net.Listen("tcp4", ":5555")
 	if err != nil {
@@ -183,7 +207,8 @@ func Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		grpcServer.GracefulStop()
+		//grpcServer.GracefulStop()
+		grpcServer.Stop()
 		wg.Done()
 	}()
 
