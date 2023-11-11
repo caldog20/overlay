@@ -13,98 +13,55 @@ import (
 
 	"github.com/caldog20/go-overlay/ipam"
 	"github.com/caldog20/go-overlay/msg"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
-//import (
-//	"bufio"
-//	"context"
-//	"fmt"
-//	"log"
-//	"net"
-//	"sync"
-//
-//	"github.com/caldog20/go-overlay/msg"
-//	"github.com/google/uuid"
-//
-//	"google.golang.org/protobuf/proto"
-//)
-
 type ControlServer struct {
 	msg.UnimplementedControlServiceServer
+	// Key vpnIP Value *Client
 	clients sync.Map
-	cipam   *ipam.Ipam
+	ipman   *ipam.Ipam
 }
 
 func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) (*msg.RegisterReply, error) {
-	//if req.User == "" {
-	//	return &msg.RegisterReply{Success: false}, nil
-	//}
+	if req.Hostname == "" {
+		return nil, errors.New("hostname must not be nil")
+	}
 
-	cid := uuid.New()
-	cip, err := s.cipam.AllocateIP(cid.String())
+	cip, err := s.ipman.AllocateIP(req.Hostname)
 	if err != nil {
 		log.Println(err)
+		return nil, errors.New("error allocating IP address")
 	}
 
 	p, _ := peer.FromContext(ctx)
 	remote := p.Addr.String()
 
 	newclient := &Client{
-		Id: cid,
-		//User:   req.User,
-		TunIP:  cip,
-		Remote: strings.Split(remote, ":")[0] + ":2222",
+		Hostname: req.Hostname,
+		VpnIP:    cip,
+		Remote:   strings.Split(remote, ":")[0] + req.Port,
 	}
 
-	s.clients.Store(newclient.Id.String(), newclient)
+	s.clients.Store(cip, newclient)
 
 	return &msg.RegisterReply{
-		Success: true,
-		Uuid:    newclient.Id.String(),
-		Tunip:   newclient.TunIP,
+		VpnIp: newclient.VpnIP,
 	}, nil
 }
 
-func (s *ControlServer) ClientInfo(ctx context.Context, req *msg.ClientInfoRequest) (*msg.ClientInfoReply, error) {
-	rid := req.GetRequesterId()
-	if rid == "" {
-		return nil, errors.New("requestor id must not be nil")
-	}
-
-	_, found := s.clients.Load(rid)
-	if !found {
-		return nil, errors.New("requesting client invalid")
-	}
-
+func (s *ControlServer) WhoIs(ctx context.Context, req *msg.WhoIsIP) (*msg.WhoIsIPReply, error) {
 	vpnip := req.GetVpnIp()
 
-	var client *Client
-
-	if req.VpnIp == "" {
-		c, ok := s.clients.Load(req.Uuid)
-		if ok {
-			client = c.(*Client)
-		}
-	} else if req.Uuid == "" {
-		s.clients.Range(func(k, v interface{}) bool {
-			c := v.(*Client)
-			if c.TunIP == vpnip {
-				client = c
-				return false
-			}
-			return true
-		})
+	c, ok := s.clients.Load(vpnip)
+	if !ok {
+		return nil, errors.New("vpn ip not found")
 	}
 
-	if client == nil {
-		return nil, errors.New("client not found")
-	}
+	// check cast error here
+	client := c.(*Client)
 
-	return &msg.ClientInfoReply{
-		Uuid:   client.Id.String(),
-		Tunip:  client.TunIP,
+	return &msg.WhoIsIPReply{
 		Remote: client.Remote,
 	}, nil
 }
@@ -112,7 +69,7 @@ func (s *ControlServer) ClientInfo(ctx context.Context, req *msg.ClientInfoReque
 func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.ControlService_PunchNotifierServer) error {
 	fin := make(chan bool)
 
-	cl, found := s.clients.Load(req.RequestorId)
+	cl, found := s.clients.Load(req.VpnIp)
 	if !found {
 		return errors.New("requesting client not registered")
 	}
@@ -122,7 +79,7 @@ func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.Contro
 	c.PunchStream = stream
 	c.Finished = fin
 
-	s.clients.Store(c.Id.String(), c)
+	s.clients.Store(c.VpnIP, c)
 
 	ctx := stream.Context()
 
@@ -130,12 +87,12 @@ func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.Contro
 		select {
 		case <-fin:
 			log.Print("client stream closing")
-			s.cipam.DeallocateIP(c.TunIP)
-			s.clients.Delete(c.Id.String())
+			s.ipman.DeallocateIP(c.VpnIP)
+			s.clients.Delete(c.VpnIP)
 			return nil
 		case <-ctx.Done():
-			s.clients.Delete(c.Id.String())
-			s.cipam.DeallocateIP(c.TunIP)
+			s.clients.Delete(c.VpnIP)
+			s.ipman.DeallocateIP(c.VpnIP)
 			return nil
 		}
 	}
@@ -143,23 +100,20 @@ func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.Contro
 }
 
 func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*emptypb.Empty, error) {
-	rid := req.GetRequestorId()
-	if rid == "" {
-		return nil, errors.New("requestor id must not be nil")
-	}
-
-	_, found := s.clients.Load(req.RequestorId)
+	c, found := s.clients.Load(req.SrcVpnIp)
 	if !found {
 		return nil, errors.New("requesting client not registered")
 	}
 
-	p, found := s.clients.Load(req.GetPuncheeId())
+	p, found := s.clients.Load(req.DstVpnIp)
 	if !found {
 		return nil, errors.New("punchee client not found")
 	}
 
+	preq := c.(*Client)
 	punchee := p.(*Client)
-	if err := punchee.PunchStream.Send(&msg.PunchNotification{Puncher: rid}); err != nil {
+
+	if err := punchee.PunchStream.Send(&msg.PunchNotification{Remote: preq.Remote}); err != nil {
 		select {
 		case punchee.Finished <- true:
 			log.Print("unsubscribed client")
@@ -186,7 +140,7 @@ func RunController(ctx context.Context) {
 	}
 
 	cServer := &ControlServer{
-		cipam: i,
+		ipman: i,
 	}
 
 	grpcServer := grpc.NewServer()

@@ -13,8 +13,7 @@ func main() {
 
 	con := flag.Bool("controller", false, "Enable Controller")
 	caddr := flag.String("caddr", "localhost:5555", "")
-	punch := flag.Bool("punch", false, "")
-	username := flag.String("user", "", "user1")
+	hostname := flag.String("hostname", "", "")
 
 	flag.Parse()
 
@@ -31,7 +30,7 @@ func main() {
 	if *con {
 		RunController(ctx)
 	} else {
-		RunClient(ctx, *caddr, *username, *punch)
+		RunClient(ctx, *caddr, *hostname)
 	}
 
 }

@@ -24,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ControlServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
-	ClientInfo(ctx context.Context, in *ClientInfoRequest, opts ...grpc.CallOption) (*ClientInfoReply, error)
+	WhoIs(ctx context.Context, in *WhoIsIP, opts ...grpc.CallOption) (*WhoIsIPReply, error)
 	Punch(ctx context.Context, in *PunchRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	PunchNotifier(ctx context.Context, in *PunchSubscribe, opts ...grpc.CallOption) (ControlService_PunchNotifierClient, error)
 }
@@ -46,9 +46,9 @@ func (c *controlServiceClient) Register(ctx context.Context, in *RegisterRequest
 	return out, nil
 }
 
-func (c *controlServiceClient) ClientInfo(ctx context.Context, in *ClientInfoRequest, opts ...grpc.CallOption) (*ClientInfoReply, error) {
-	out := new(ClientInfoReply)
-	err := c.cc.Invoke(ctx, "/msg.ControlService/ClientInfo", in, out, opts...)
+func (c *controlServiceClient) WhoIs(ctx context.Context, in *WhoIsIP, opts ...grpc.CallOption) (*WhoIsIPReply, error) {
+	out := new(WhoIsIPReply)
+	err := c.cc.Invoke(ctx, "/msg.ControlService/WhoIs", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (x *controlServicePunchNotifierClient) Recv() (*PunchNotification, error) {
 // for forward compatibility
 type ControlServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterReply, error)
-	ClientInfo(context.Context, *ClientInfoRequest) (*ClientInfoReply, error)
+	WhoIs(context.Context, *WhoIsIP) (*WhoIsIPReply, error)
 	Punch(context.Context, *PunchRequest) (*emptypb.Empty, error)
 	PunchNotifier(*PunchSubscribe, ControlService_PunchNotifierServer) error
 	mustEmbedUnimplementedControlServiceServer()
@@ -114,8 +114,8 @@ type UnimplementedControlServiceServer struct {
 func (UnimplementedControlServiceServer) Register(context.Context, *RegisterRequest) (*RegisterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
-func (UnimplementedControlServiceServer) ClientInfo(context.Context, *ClientInfoRequest) (*ClientInfoReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ClientInfo not implemented")
+func (UnimplementedControlServiceServer) WhoIs(context.Context, *WhoIsIP) (*WhoIsIPReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WhoIs not implemented")
 }
 func (UnimplementedControlServiceServer) Punch(context.Context, *PunchRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Punch not implemented")
@@ -154,20 +154,20 @@ func _ControlService_Register_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ControlService_ClientInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ClientInfoRequest)
+func _ControlService_WhoIs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WhoIsIP)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ControlServiceServer).ClientInfo(ctx, in)
+		return srv.(ControlServiceServer).WhoIs(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/msg.ControlService/ClientInfo",
+		FullMethod: "/msg.ControlService/WhoIs",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControlServiceServer).ClientInfo(ctx, req.(*ClientInfoRequest))
+		return srv.(ControlServiceServer).WhoIs(ctx, req.(*WhoIsIP))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -223,8 +223,8 @@ var ControlService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControlService_Register_Handler,
 		},
 		{
-			MethodName: "ClientInfo",
-			Handler:    _ControlService_ClientInfo_Handler,
+			MethodName: "WhoIs",
+			Handler:    _ControlService_WhoIs_Handler,
 		},
 		{
 			MethodName: "Punch",

@@ -8,44 +8,39 @@ option go_package = "github.com/caldog20/go-overlay/msg";
 
 
 message RegisterRequest {
-  string user = 1;
+  string hostname = 1;
+  string port = 2;
 }
 
 message RegisterReply {
-  bool success = 1;
-  string uuid = 2;
-  string tunip = 3;
+  string vpn_ip = 1;
 }
 
-message ClientInfoRequest {
-  string requester_id = 1;
-  string vpn_ip = 2;
-  string uuid = 3;
+message WhoIsIP {
+  string vpn_ip = 1;
 }
 
-message ClientInfoReply {
-    string uuid = 1;
-    string tunip = 2;
-    string remote = 3;
+message WhoIsIPReply {
+  string remote = 1;
 }
 
 message PunchSubscribe {
-  string requestor_id = 1;
+  string vpn_ip = 1;
 }
 
 message PunchNotification {
-  string puncher = 1;
+  string remote = 1;
 }
 
 message PunchRequest {
-  string requestor_id = 1;
-  string punchee_id = 2;
+  string src_vpn_ip = 1;
+  string dst_vpn_ip = 2;
 }
 
 
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
-  rpc ClientInfo(ClientInfoRequest) returns (ClientInfoReply) {}
+  rpc WhoIs(WhoIsIP) returns (WhoIsIPReply) {}
   rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}
   rpc PunchNotifier(PunchSubscribe) returns (stream PunchNotification) {}
 }
