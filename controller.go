@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
@@ -39,9 +38,9 @@ type ControlServer struct {
 }
 
 func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) (*msg.RegisterReply, error) {
-	if req.User == "" {
-		return &msg.RegisterReply{Success: false}, nil
-	}
+	//if req.User == "" {
+	//	return &msg.RegisterReply{Success: false}, nil
+	//}
 
 	cid := uuid.New()
 	cip, err := s.cipam.AllocateIP(cid.String())
@@ -53,8 +52,8 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 	remote := p.Addr.String()
 
 	newclient := &Client{
-		Id:     cid,
-		User:   req.User,
+		Id: cid,
+		//User:   req.User,
 		TunIP:  cip,
 		Remote: strings.Split(remote, ":")[0] + ":2222",
 	}
@@ -79,42 +78,27 @@ func (s *ControlServer) ClientInfo(ctx context.Context, req *msg.ClientInfoReque
 		return nil, errors.New("requesting client invalid")
 	}
 
-	var clientList []*msg.ClientInfoReply_Client
+	vpnip := req.GetVpnIp()
 
-	if req.Bulk {
-		s.clients.Range(func(k, v interface{}) bool {
-			cid := fmt.Sprint(k)
-			c := v.(*Client)
-			if cid != rid {
-				clientList = append(clientList, &msg.ClientInfoReply_Client{
-					Uuid:   c.Id.String(),
-					User:   c.User,
-					Tunip:  c.TunIP,
-					Remote: c.Remote,
-				})
-			}
-			return true
-		})
+	var client *Client
 
-	} else {
-		cquery, found := s.clients.Load(req.ClientId)
-
-		if !found {
-			return nil, errors.New("client not found")
-		} else {
-			result := cquery.(*Client)
-			clientList = append(clientList, &msg.ClientInfoReply_Client{
-				Uuid:   result.Id.String(),
-				User:   result.User,
-				Tunip:  result.TunIP,
-				Remote: result.Remote,
-			})
+	s.clients.Range(func(k, v interface{}) bool {
+		c := v.(*Client)
+		if c.TunIP == vpnip {
+			client = c
+			return false
 		}
+		return true
+	})
+
+	if client == nil {
+		return nil, errors.New("client not found")
 	}
 
 	return &msg.ClientInfoReply{
-		Clients:     clientList,
-		ClientCount: uint64(len(clientList)),
+		Uuid:   client.Id.String(),
+		Tunip:  client.TunIP,
+		Remote: client.Remote,
 	}, nil
 }
 
@@ -143,9 +127,8 @@ func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.Contro
 			s.clients.Delete(c.Id.String())
 			return nil
 		case <-ctx.Done():
-			log.Print("client disconnected")
-			s.cipam.DeallocateIP(c.TunIP)
 			s.clients.Delete(c.Id.String())
+			s.cipam.DeallocateIP(c.TunIP)
 			return nil
 		}
 	}

@@ -65,34 +65,31 @@ func RunClient(ctx context.Context, caddr string, username string, doPunch bool)
 	//pb := []byte("punchout")
 
 	if doPunch {
-
-		var clients []*msg.ClientInfoReply_Client
-
+		client := &Client{}
 		for {
 			// Request info about other connected clients
-			ciresponse, rerr := gclient.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gclient.id, Bulk: true})
-			if rerr != nil {
-				log.Printf("error sending/recv message: %v", rerr)
-				return
+			ciresponse, err := gclient.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gclient.id, VpnIp: "192.168.1.2"})
+			if err != nil {
+				log.Printf("client not found maybe: %v", err)
+				continue
 			}
 
-			clients = ciresponse.Clients
-
-			if len(clients) == 0 {
-				log.Println("no clients yet")
-			} else {
-				break
+			if ciresponse.Tunip != "192.168.1.2" {
+				continue
 			}
 
+			client.TunIP = ciresponse.Tunip
+			client.Remote = ciresponse.Remote
+			client.Id = uuid.MustParse(ciresponse.Uuid)
+			gclient.hosts.Store(client.Id.String(), client)
 		}
 
 		// Write a few packets out first
-		remote := clients[0].Remote
-		log.Printf("requesting punch to remote %v", remote)
-		raddr, _ := net.ResolveUDPAddr("udp4", remote)
+		log.Printf("requesting punch to remote %v")
+		raddr, _ := net.ResolveUDPAddr("udp4", client.Remote)
 
 		// Send Punch Request to client
-		_, err = gclient.msgclient.Punch(ctx, &msg.PunchRequest{RequestorId: gclient.id, PuncheeId: clients[0].Uuid})
+		_, err = gclient.msgclient.Punch(ctx, &msg.PunchRequest{RequestorId: gclient.id, PuncheeId: client.Id.String()})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -161,14 +158,18 @@ func (gc *GClient) Punch(ctx context.Context, id string) {
 	pc, ok := gc.hosts.Load(id)
 	if !ok {
 		log.Printf("client to punch to not found, asking server about client: %s", id)
-		reply, err := gc.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gc.id, Bulk: false, ClientId: id})
+		reply, err := gc.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gc.id})
 		if err != nil {
 			log.Printf("error asking server about client for punch: %v", err)
 			return
 		}
-		client.Id, err = uuid.Parse(reply.Clients[0].Uuid)
-		client.TunIP = reply.Clients[0].Tunip
-		client.Remote = reply.Clients[0].Remote
+		log.Printf("client response id: %s", reply.Uuid)
+		client.Id, err = uuid.Parse(reply.Uuid)
+		if err != nil {
+			log.Fatal(err)
+		}
+		client.TunIP = reply.Tunip
+		client.Remote = reply.Remote
 		gc.hosts.Store(client.Id.String(), client)
 		log.Printf("client info for punch found, storing client: id: %v ip: %v remote: %v", client.Id.String(), client.TunIP, client.Remote)
 	} else {

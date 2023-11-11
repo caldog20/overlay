@@ -19,20 +19,13 @@ message RegisterReply {
 
 message ClientInfoRequest {
   string requester_id = 1;
-  bool bulk = 2;
-  string client_id = 3;
+  string vpn_ip = 2;
 }
 
 message ClientInfoReply {
-  message Client {
     string uuid = 1;
-    string user = 2;
-    string tunip = 3;
-    string remote = 4;
-  }
-
-  repeated Client clients = 1;
-  uint64 client_count = 2;
+    string tunip = 2;
+    string remote = 3;
 }
 
 message PunchSubscribe {
