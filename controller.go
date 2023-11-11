@@ -82,14 +82,21 @@ func (s *ControlServer) ClientInfo(ctx context.Context, req *msg.ClientInfoReque
 
 	var client *Client
 
-	s.clients.Range(func(k, v interface{}) bool {
-		c := v.(*Client)
-		if c.TunIP == vpnip {
-			client = c
-			return false
+	if req.VpnIp == "" {
+		c, ok := s.clients.Load(req.Uuid)
+		if ok {
+			client = c.(*Client)
 		}
-		return true
-	})
+	} else if req.Uuid == "" {
+		s.clients.Range(func(k, v interface{}) bool {
+			c := v.(*Client)
+			if c.TunIP == vpnip {
+				client = c
+				return false
+			}
+			return true
+		})
+	}
 
 	if client == nil {
 		return nil, errors.New("client not found")

@@ -155,7 +155,7 @@ func (gc *GClient) Subscribe(ctx context.Context) error {
 }
 
 func (gc *GClient) Punch(ctx context.Context, id string) {
-	var client *Client
+	client := &Client{}
 	pc, ok := gc.hosts.Load(id)
 	if !ok {
 		log.Printf("client to punch to not found, asking server about client: %s", id)
