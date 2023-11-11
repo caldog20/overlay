@@ -79,7 +79,7 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 
 	<-ctx.Done()
 
-	_, err = gclient.msgclient.Deregister(ctx, &msg.DeregisterRequest{
+	_, err = gclient.msgclient.Deregister(context.TODO(), &msg.DeregisterRequest{
 		Uuid: gclient.id,
 	})
 	if err != nil {
