@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/caldog20/go-overlay/firewall"
 	"github.com/caldog20/go-overlay/msg"
@@ -16,6 +15,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+type remoteHost struct {
+	VpnIP  string
+	Remote string
+	Addr   *net.UDPAddr
+	Id     string
+}
 
 type GClient struct {
 	hosts     sync.Map
@@ -26,21 +32,16 @@ type GClient struct {
 	id        string
 	vpnip     string
 	fw        *firewall.Firewall
+	hostname  string
 }
 
 func RunClient(ctx context.Context, caddr string, hostname string) {
 	log.SetPrefix("client: ")
 
-	gclient := &GClient{
-		fw: firewall.NewFirewall(),
-	}
-
 	t, err := tun.NewTun()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	gclient.tun = t
 
 	conn, err := grpc.DialContext(ctx, caddr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -60,59 +61,22 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 
 	mc := msg.NewControlServiceClient(conn)
 
-	gclient.udpcon = uc
-	gclient.gconn = conn
-	gclient.msgclient = mc
+	gclient := &GClient{
+		hosts:     sync.Map{},
+		udpcon:    uc,
+		gconn:     conn,
+		msgclient: mc,
+		tun:       t,
+		id:        "",
+		vpnip:     "",
+		fw:        firewall.NewFirewall(),
+		hostname:  hostname,
+	}
 
-	err = gclient.Register(ctx, hostname)
+	err = gclient.Register(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	err = gclient.Subscribe(ctx)
-
-	//go gclient.Listen(ctx)
-
-	//pb := []byte("punchout")
-
-	//if doPunch {
-	//	client := &Client{}
-	//	for {
-	//		// Request info about other connected clients
-	//		ciresponse, err := gclient.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gclient.id, VpnIp: "192.168.1.1"})
-	//		if err != nil {
-	//			log.Printf("client not found maybe: %v", err)
-	//			continue
-	//		}
-	//
-	//		if ciresponse.Tunip != "192.168.1.1" {
-	//			log.Printf("got wrong vpnip: %v", ciresponse.Tunip)
-	//		}
-	//
-	//		client.VpnIP = ciresponse.Tunip
-	//		client.Remote = ciresponse.Remote
-	//		client.Id = uuid.MustParse(ciresponse.Uuid)
-	//		gclient.hosts.Store(client.Id.String(), client)
-	//		break
-	//	}
-	//
-	//	// Write a few packets out first
-	//	log.Printf("requesting punch to remote %v", client.Remote)
-	//	raddr, _ := net.ResolveUDPAddr("udp4", client.Remote)
-	//
-	//	// Send Punch Request to client
-	//	_, err = gclient.msgclient.Punch(ctx, &msg.PunchRequest{RequestorId: gclient.id, PuncheeId: client.Id.String()})
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//	log.Println("sent punch request, starting to write data to remote")
-	//	// wait a few seconds
-	//	time.Sleep(time.Second * 3)
-	//	// Write more data
-	//	gclient.udpcon.WriteToUDP([]byte("hello\n"), raddr)
-	//	gclient.udpcon.WriteToUDP([]byte("punch worked\n"), raddr)
-	//	gclient.udpcon.WriteToUDP([]byte("goodbye\n"), raddr)
-	//}
 
 	<-ctx.Done()
 	gclient.udpcon.Close()
@@ -120,9 +84,63 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 
 }
 
-func (gc *GClient) Register(ctx context.Context, username string) error {
+func (gc *GClient) QueryRemotes(ctx context.Context) {
+QUERY:
+	for {
+		query, err := gc.msgclient.RemoteList(ctx, &msg.RemoteListRequest{
+			Uuid: gc.id,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		remotes := query.Remotes
+		if len(remotes) < 1 {
+			goto STANDOFF
+		}
+
+		var rh *remoteHost
+		for _, v := range remotes {
+			r, ok := gc.hosts.Load(v.VpnIp)
+			if ok {
+				rh = r.(*remoteHost)
+				rh.VpnIP = v.VpnIp
+				rh.Id = v.Uuid
+				rh.Remote = v.Remote
+				rh.Addr, err = net.ResolveUDPAddr("udp4", rh.Remote)
+				if err != nil {
+					log.Printf("error resolving raddr for adding host to list: %v", err)
+					goto STANDOFF
+				}
+			} else {
+				rh = &remoteHost{}
+				rh.VpnIP = v.VpnIp
+				rh.Id = v.Uuid
+				rh.Remote = v.Remote
+				rh.Addr, err = net.ResolveUDPAddr("udp4", rh.Remote)
+				log.Printf("error resolving raddr for adding host to list: %v", err)
+				if err != nil {
+					log.Printf("error resolving raddr for adding host to list: %v", err)
+					goto STANDOFF
+				}
+			}
+			count := len(remotes)
+			log.Println("updating remote client list - count :%d", count)
+			gc.hosts.Store(rh.VpnIP, rh)
+			goto STANDOFF
+		}
+	}
+
+STANDOFF:
+	for {
+		time.Sleep(time.Second * 5)
+		goto QUERY
+	}
+}
+
+func (gc *GClient) Register(ctx context.Context) error {
 	// Register Client
-	reply, err := gc.msgclient.Register(ctx, &msg.RegisterRequest{Hostname: username, Port: "2222"})
+	reply, err := gc.msgclient.Register(ctx, &msg.RegisterRequest{Hostname: gc.hostname, Port: "2222"})
 	if err != nil {
 		log.Printf("error sending/recv message: %v", err)
 		return errors.New("failed to register with controller")
@@ -133,9 +151,10 @@ func (gc *GClient) Register(ctx context.Context, username string) error {
 	//}
 
 	gc.vpnip = reply.VpnIp
+	gc.id = reply.Uuid
 
 	log.Println("User registered successfully")
-	log.Printf("vpnip: %s", gc.vpnip)
+	log.Printf("uuid: %s - vpnip: %s", gc.id, gc.vpnip)
 
 	err = gc.tun.ConfigureInterface(net.ParseIP(gc.vpnip))
 	if err != nil {
@@ -145,76 +164,6 @@ func (gc *GClient) Register(ctx context.Context, username string) error {
 	gc.RunTunnel(ctx)
 
 	return nil
-}
-
-func (gc *GClient) Subscribe(ctx context.Context) error {
-	// Subscribe to puncher service
-	puncher, err := gc.msgclient.PunchNotifier(ctx, &msg.PunchSubscribe{VpnIp: gc.vpnip})
-	if err != nil {
-		return err
-	}
-
-	log.Println("Starting puncher routine")
-	go func() {
-		for {
-			punch, err := puncher.Recv()
-			if err != nil {
-				puncher = nil
-				log.Printf("punch client stream read error")
-				return
-			}
-			log.Printf("Received punch notification for client: %s", punch.GetRemote())
-			gc.Punch(ctx, punch.GetRemote())
-		}
-	}()
-
-	return nil
-}
-
-func (gc *GClient) Punch(ctx context.Context, remote string) {
-	//client := &Client{}
-	//pc, ok := gc.hosts.Load(id)
-	//if !ok {
-	//	log.Printf("client to punch to not found, asking server about client: %s", id)
-	//	reply, err := gc.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gc.id, Uuid: id})
-	//	if err != nil {
-	//		log.Printf("error asking server about client for punch: %v", err)
-	//		return
-	//	}
-	//	log.Printf("client response id: %s", reply.Uuid)
-	//	client.Id, err = uuid.Parse(reply.Uuid)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//	client.VpnIP = reply.Tunip
-	//	client.Remote = reply.Remote
-	//	gc.hosts.Store(client.Id.String(), client)
-	//	log.Printf("client info for punch found, storing client: id: %v ip: %v remote: %v", client.Id.String(), client.VpnIP, client.Remote)
-	//} else {
-	//	client, ok = pc.(*Client)
-	//	if !ok {
-	//		log.Println("error casting found client to *Client")
-	//		return
-	//	}
-	//}
-
-	//log.Println("client info found - doing punch to remote")
-	raddr, _ := net.ResolveUDPAddr("udp4", remote)
-
-	for i := 0; i < 3; i++ {
-		gc.udpcon.WriteToUDP([]byte("punch"), raddr)
-	}
-
-	log.Println("punch completed")
-}
-
-func (gc *GClient) Listen(ctx context.Context) {
-	rdr := bufio.NewScanner(gc.udpcon)
-
-	for {
-		rdr.Scan()
-		fmt.Println(rdr.Text())
-	}
 }
 
 func (gc *GClient) RunTunnel(ctx context.Context) {
@@ -247,30 +196,27 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 			// check to see if we have active tunnel with this address
 			remote, found := gc.hosts.Load(fwpacket.RemoteIP.String())
 			if found {
-				r := remote.(*net.UDPAddr)
-				n, err = gc.udpcon.WriteToUDP(in[:n], r)
-				log.Printf("wrote %v bytes to remote: %s", n, r.String())
+				r := remote.(*remoteHost)
+				n, err = gc.udpcon.WriteToUDP(in[:n], r.Addr)
+				log.Printf("wrote %v bytes to remote: %s", n, r.Addr.String())
 			} else {
 				// query server about client, ask for punch, and store client
-				qresp, qerr := gc.msgclient.WhoIs(ctx, &msg.WhoIsIP{VpnIp: fwpacket.RemoteIP.String()})
+				qresp, qerr := gc.msgclient.WhoIsIp(ctx, &msg.WhoIsIPRequest{VpnIp: fwpacket.RemoteIP.String()})
 				if qerr != nil {
 					log.Println(qerr)
 					continue
 				}
-				raddr, rerr := net.ResolveUDPAddr("udp4", qresp.Remote)
-				if rerr != nil {
-					log.Println(rerr)
-					continue
-				}
-				// ask for punch and try again next time
-				// Send Punch Request to client
-				_, err = gc.msgclient.Punch(ctx, &msg.PunchRequest{SrcVpnIp: gc.vpnip, DstVpnIp: fwpacket.RemoteIP.String()})
+				// Got client info back, store and try again next time
+				newremote := &remoteHost{}
+				newremote.VpnIP = qresp.Remote.VpnIp
+				newremote.Id = qresp.Remote.Uuid
+				newremote.Remote = qresp.Remote.Remote
+				newremote.Addr, err = net.ResolveUDPAddr("udp4", qresp.Remote.Remote)
 				if err != nil {
-					log.Println(err)
-					continue
+					log.Printf("erroring resolving udp address for new client: %s - %v", newremote.Remote, err)
+				} else {
+					gc.hosts.Store(newremote.VpnIP, newremote)
 				}
-				// We sent punch, store client now
-				gc.hosts.Store(fwpacket.RemoteIP.String(), raddr)
 
 				select {
 				case <-ctx.Done():
@@ -278,6 +224,7 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 					gc.tun.Close()
 					return
 				default:
+					continue
 				}
 			}
 		}
@@ -302,6 +249,8 @@ func (gc *GClient) RunTunnel(ctx context.Context) {
 				log.Println("fw dropping packet")
 				continue
 			}
+
+			// check for real remote here, roaming later
 
 			n, err = gc.tun.Write(in[:n])
 			if err != nil {

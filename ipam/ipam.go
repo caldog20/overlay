@@ -11,6 +11,7 @@ import (
 type IP struct {
 	ip       netip.Addr
 	clientID string
+	hostname string
 }
 
 type Ipam struct {
@@ -49,7 +50,7 @@ func (i *Ipam) SetPrefix(p string) error {
 	return nil
 }
 
-func (i *Ipam) AllocateIP(clientID string) (string, error) {
+func (i *Ipam) AllocateIP(clientID string, hostname string) (string, error) {
 	if clientID == "" {
 		return "", errors.New("client ID must not be nil when allocating IP")
 	}
@@ -66,6 +67,7 @@ func (i *Ipam) AllocateIP(clientID string) (string, error) {
 		i.pool[ips] = IP{
 			ip:       ip,
 			clientID: clientID,
+			hostname: hostname,
 		}
 		return ips, nil
 	}

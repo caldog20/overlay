@@ -3,8 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"google.golang.org/grpc/peer"
-	"google.golang.org/protobuf/types/known/emptypb"
+	"github.com/google/uuid"
 	"log"
 	"net"
 	"runtime"
@@ -13,12 +12,20 @@ import (
 
 	"github.com/caldog20/go-overlay/ipam"
 	"github.com/caldog20/go-overlay/msg"
+
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 )
+
+type client struct {
+	Id       string
+	Hostname string
+	VpnIP    string
+	Remote   string
+}
 
 type ControlServer struct {
 	msg.UnimplementedControlServiceServer
-	// Key vpnIP Value *Client
 	clients sync.Map
 	ipman   *ipam.Ipam
 }
@@ -28,102 +35,84 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 		return nil, errors.New("hostname must not be nil")
 	}
 
-	cip, err := s.ipman.AllocateIP(req.Hostname)
+	p, _ := peer.FromContext(ctx)
+	remote := p.Addr.String()
+
+	id, _ := uuid.NewUUID()
+
+	cip, err := s.ipman.AllocateIP(id.String(), req.Hostname)
 	if err != nil {
 		log.Println(err)
 		return nil, errors.New("error allocating IP address")
 	}
 
-	p, _ := peer.FromContext(ctx)
-	remote := p.Addr.String()
-
-	newclient := &Client{
+	newclient := &client{
+		Id:       id.String(),
 		Hostname: req.Hostname,
 		VpnIP:    cip,
 		Remote:   strings.Split(remote, ":")[0] + ":" + req.Port,
 	}
 
-	s.clients.Store(cip, newclient)
+	s.clients.Store(id.String(), newclient)
 
 	return &msg.RegisterReply{
 		VpnIp: newclient.VpnIP,
+		Uuid:  newclient.Id,
 	}, nil
 }
 
-func (s *ControlServer) WhoIs(ctx context.Context, req *msg.WhoIsIP) (*msg.WhoIsIPReply, error) {
+func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*msg.WhoIsIPReply, error) {
 	vpnip := req.GetVpnIp()
 
-	c, ok := s.clients.Load(vpnip)
+	id, err := s.ipman.WhoIsByIP(vpnip)
+	if err != nil {
+		return nil, errors.New("client not found")
+	}
+
+	c, ok := s.clients.Load(id)
 	if !ok {
 		return nil, errors.New("vpn ip not found")
 	}
 
 	// check cast error here
-	client := c.(*Client)
+	client := c.(*client)
 
 	return &msg.WhoIsIPReply{
-		Remote: client.Remote,
+		Remote: &msg.Remote{
+			Uuid:   client.Id,
+			VpnIp:  client.VpnIP,
+			Remote: client.Remote,
+		},
 	}, nil
 }
 
-func (s *ControlServer) PunchNotifier(req *msg.PunchSubscribe, stream msg.ControlService_PunchNotifierServer) error {
-	fin := make(chan bool)
-
-	cl, found := s.clients.Load(req.VpnIp)
-	if !found {
-		return errors.New("requesting client not registered")
-	}
-
-	c := cl.(*Client)
-
-	c.PunchStream = stream
-	c.Finished = fin
-
-	s.clients.Store(c.VpnIP, c)
-
-	ctx := stream.Context()
-
-	for {
-		select {
-		case <-fin:
-			log.Print("client stream closing")
-			s.ipman.DeallocateIP(c.VpnIP)
-			s.clients.Delete(c.VpnIP)
-			return nil
-		case <-ctx.Done():
-			s.clients.Delete(c.VpnIP)
-			s.ipman.DeallocateIP(c.VpnIP)
-			return nil
-		}
-	}
-
-}
-
-func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*emptypb.Empty, error) {
-	c, found := s.clients.Load(req.SrcVpnIp)
-	if !found {
+func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListRequest) (*msg.RemoteListReply, error) {
+	reqid := req.Uuid
+	_, ok := s.clients.Load(reqid)
+	if !ok {
 		return nil, errors.New("requesting client not registered")
 	}
 
-	p, found := s.clients.Load(req.DstVpnIp)
-	if !found {
-		return nil, errors.New("punchee client not found")
-	}
+	var rl []*msg.Remote
 
-	preq := c.(*Client)
-	punchee := p.(*Client)
-
-	if err := punchee.PunchStream.Send(&msg.PunchNotification{Remote: preq.Remote}); err != nil {
-		select {
-		case punchee.Finished <- true:
-			log.Print("unsubscribed client")
-		default:
+	s.clients.Range(func(k, v interface{}) bool {
+		if k.(string) != reqid {
+			r := &msg.Remote{
+				Uuid:   v.(*client).Id,
+				VpnIp:  v.(*client).VpnIP,
+				Remote: v.(*client).Remote,
+			}
+			rl = append(rl, r)
+		} else {
+			log.Printf("not sending requestor its own client info: %v", reqid)
 		}
 
-		// handle unsubscribing and errors
-	}
+		return true
+	})
 
-	return &emptypb.Empty{}, nil
+	return &msg.RemoteListReply{
+		Remotes: rl,
+	}, nil
 }
 
 func RunController(ctx context.Context) {
