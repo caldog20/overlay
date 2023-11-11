@@ -20,6 +20,7 @@ message RegisterReply {
 message ClientInfoRequest {
   string requester_id = 1;
   string vpn_ip = 2;
+  string uuid = 3;
 }
 
 message ClientInfoReply {

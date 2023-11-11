@@ -86,7 +86,7 @@ func RunClient(ctx context.Context, caddr string, username string, doPunch bool)
 		}
 
 		// Write a few packets out first
-		log.Printf("requesting punch to remote %v")
+		log.Printf("requesting punch to remote %v", client.Remote)
 		raddr, _ := net.ResolveUDPAddr("udp4", client.Remote)
 
 		// Send Punch Request to client
@@ -159,7 +159,7 @@ func (gc *GClient) Punch(ctx context.Context, id string) {
 	pc, ok := gc.hosts.Load(id)
 	if !ok {
 		log.Printf("client to punch to not found, asking server about client: %s", id)
-		reply, err := gc.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gc.id})
+		reply, err := gc.msgclient.ClientInfo(ctx, &msg.ClientInfoRequest{RequesterId: gc.id, Uuid: id})
 		if err != nil {
 			log.Printf("error asking server about client for punch: %v", err)
 			return
