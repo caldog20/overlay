@@ -23,7 +23,7 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 FILES = $(call rwildcard,./,*.go)
 
 
-all: server peer protogen
+all: server peer
 
 server:
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o ./bin/controller ./cmd/controller
