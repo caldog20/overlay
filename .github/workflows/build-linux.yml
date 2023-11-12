@@ -29,14 +29,17 @@ jobs:
     - name: Install golint
       run: go install golang.org/x/lint/golint@latest
       
-    - name: build
-      run: go build
+    - name: build controller
+      run: go build ./cmd/controller
+
+    - name: build node
+      run: go build ./cmd/node
 
     #- name: Test
      # run: go test
 
     - name: Run vet & lint
       run: |
-        go vet .
+        go vet ./...
         golint ./...
 

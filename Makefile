@@ -36,11 +36,15 @@ peer:
 
 protogen:
 	echo "Generating protobuf and grpc code"
-	protoc --proto_path=msg --go_out=msg --go_opt=paths=source_relative --go-grpc_out=msg --go-grpc_opt=paths=source_relative msg/*.proto
+	@protoc --proto_path=msg --go_out=msg --go_opt=paths=source_relative --go-grpc_out=msg --go-grpc_opt=paths=source_relative msg/*.proto
 
 fmt:
 	@echo "gofmt (simplify)"
 	@gofmt -s -l -w $(FILES) 2>&1
+
+lint:
+	@echo "running golint"
+	@golint ./...
 
 vet:
 	$(GO) vet ./...
@@ -53,4 +57,4 @@ runserver: server
 clean:
 	rm -rf ./bin
 
-.PHONY: clean fmt runpeer runserver
+.PHONY: clean fmt lint runpeer runserver
