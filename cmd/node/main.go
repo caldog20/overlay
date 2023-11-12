@@ -7,11 +7,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/caldog20/go-overlay/node"
 )
 
 func main() {
 
-	con := flag.Bool("controller", false, "Enable Controller")
 	caddr := flag.String("caddr", "localhost:5555", "")
 	hostname := flag.String("hostname", "", "")
 
@@ -22,15 +23,8 @@ func main() {
 		sigchan := make(chan os.Signal, 1)
 		signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 		log.Printf("Received %v signal from channel, shutting down\n", <-sigchan)
-		//time.Sleep(3 * time.Second)
-		//fmt.Print("Shutting down context")
 		cancel()
 	}()
 
-	if *con {
-		RunController(ctx)
-	} else {
-		RunClient(ctx, *caddr, *hostname)
-	}
-
+	node.RunClient(ctx, *caddr, *hostname)
 }

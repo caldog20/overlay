@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"context"
@@ -76,6 +76,8 @@ func RunClient(ctx context.Context, caddr string, hostname string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go gclient.QueryRemotes(ctx)
 
 	<-ctx.Done()
 
