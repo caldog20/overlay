@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
+	"github.com/caldog20/go-overlay/controller"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/caldog20/go-overlay/controller"
 )
 
 func main() {
