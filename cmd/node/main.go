@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"gopkg.in/ini.v1"
 	"log"
 	"os"
 	"os/signal"
@@ -12,10 +13,7 @@ import (
 )
 
 func main() {
-
-	caddr := flag.String("caddr", "localhost:5555", "")
-	hostname := flag.String("hostname", "", "")
-
+	pa := flag.String("c", "/Users/cyates/projects/go-overlay/cmd/node/config.ini", "")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -26,5 +24,11 @@ func main() {
 		cancel()
 	}()
 
-	node.RunClient(ctx, *caddr, *hostname)
+	config, err := ini.Load(*pa)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	n := node.NewNode(config)
+	n.Run(ctx)
 }

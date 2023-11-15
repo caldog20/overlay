@@ -1,4 +1,4 @@
-package msg
+package header
 
 import (
 	"encoding/binary"
@@ -12,7 +12,7 @@ type MessageSubType uint8
 // Header Length
 const (
 	Version HeaderVersion = 1
-	Len                   = 8
+	Len                   = 16
 )
 
 // A custom header allows for varying payloads to be used and encoded/decoded properly
@@ -27,19 +27,18 @@ const (
 // // Control signifies protobuf message
 // // Test signifies protobuf test messages
 const (
-	Invalid   MessageType = 0
-	Control   MessageType = 1
+	Punch     MessageType = 0
+	Handshake MessageType = 1
 	Data      MessageType = 2
 	Keepalive MessageType = 3
+	Test      MessageType = 4
 )
 
 // Control Subtypes
 const (
-	None           MessageSubType = 0
-	Request        MessageSubType = 1
-	Reply          MessageSubType = 2
-	Authentication MessageSubType = 3
-	Handshake      MessageSubType = 4
+	None      MessageSubType = 0
+	Initiator MessageSubType = 1
+	Responder MessageSubType = 2
 )
 
 // Test SubTypes
@@ -50,11 +49,12 @@ const (
 )
 
 type Header struct {
-	Version HeaderVersion
-	Type    MessageType
-	SubType MessageSubType
-	MsgLen  uint32
-	Unused  uint8
+	Version    HeaderVersion
+	Type       MessageType
+	SubType    MessageSubType
+	ID         uint32
+	MsgCounter uint64
+	Unused     uint8
 }
 
 //var (
@@ -87,7 +87,7 @@ type Header struct {
 //	}
 //)
 
-func (h *Header) Encode(b []byte, t MessageType, st MessageSubType, msglen uint32) ([]byte, error) {
+func (h *Header) Encode(b []byte, t MessageType, st MessageSubType, id uint32, counter uint64) ([]byte, error) {
 	if h == nil {
 		return nil, errors.New("header is nil")
 	} else if cap(b) < Len {
@@ -96,7 +96,8 @@ func (h *Header) Encode(b []byte, t MessageType, st MessageSubType, msglen uint3
 	h.Version = Version
 	h.Type = t
 	h.SubType = st
-	h.MsgLen = msglen
+	h.ID = id
+	h.MsgCounter = counter
 	h.Unused = 0
 
 	return encodeBytes(b, h), nil
@@ -107,8 +108,9 @@ func encodeBytes(b []byte, h *Header) []byte {
 	b[0] = byte(h.Version)
 	b[1] = byte(h.Type)
 	b[2] = byte(h.SubType)
-	binary.BigEndian.PutUint32(b[3:7], h.MsgLen)
-	b[7] = h.Unused
+	binary.BigEndian.PutUint32(b[3:7], h.ID)
+	binary.BigEndian.PutUint64(b[7:15], h.MsgCounter)
+	b[15] = h.Unused
 	return b
 }
 
@@ -119,8 +121,9 @@ func (h *Header) Parse(b []byte) error {
 	h.Version = HeaderVersion(b[0])
 	h.Type = MessageType(b[1])
 	h.SubType = MessageSubType(b[2])
-	h.MsgLen = binary.BigEndian.Uint32(b[3:7])
-	h.Unused = b[7]
+	h.ID = binary.BigEndian.Uint32(b[3:7])
+	h.MsgCounter = binary.BigEndian.Uint64(b[7:15])
+	h.Unused = b[15]
 
 	if h.Version != Version {
 		return errors.New("header version mismatch")
