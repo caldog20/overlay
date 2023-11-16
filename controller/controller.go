@@ -107,6 +107,29 @@ func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*
 	}, nil
 }
 
+func (s *ControlServer) WhoIsID(ctx context.Context, req *msg.WhoIsIDRequest) (*msg.WhoIsIDReply, error) {
+	id := req.GetId()
+
+	ip, err := s.ipman.WhoIsByID(id)
+	if err != nil {
+		return nil, errors.New("client not found")
+	}
+
+	//c, ok := s.clients.Load(id)
+	//if !ok {
+	//	return nil, errors.New("vpn ip not found")
+	//}
+
+	// check cast error here
+	//client := c.(*client)
+
+	return &msg.WhoIsIDReply{
+		Remote: &msg.Remote{
+			VpnIp: ip,
+		},
+	}, nil
+}
+
 func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListRequest) (*msg.RemoteListReply, error) {
 	reqid := req.Id
 	_, ok := s.clients.Load(reqid)

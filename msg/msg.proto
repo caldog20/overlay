@@ -38,14 +38,25 @@ message WhoIsIPRequest {
   string vpn_ip = 1;
 }
 
+// Change this to reuse remote object
 message WhoIsIPReply {
   Remote remote = 1;
 }
+
+message WhoIsIDRequest {
+  string id = 1;
+}
+
+message WhoIsIDReply {
+  Remote remote = 1;
+}
+
 
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
   rpc Deregister(DeregisterRequest) returns (google.protobuf.Empty) {}
   rpc WhoIsIp(WhoIsIPRequest) returns (WhoIsIPReply) {}
+  rpc WhoIsID(WhoIsIDRequest) returns (WhoIsIDReply) {}
   rpc RemoteList(RemoteListRequest) returns (RemoteListReply) {}
   //  rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}
   //  rpc PunchNotifier(PunchSubscribe) returns (stream PunchNotification) {}

@@ -3,9 +3,21 @@ package node
 import (
 	noiseimpl "github.com/caldog20/go-overlay/noise"
 	"github.com/flynn/noise"
+	"math/rand"
 	"net"
 	"net/netip"
 	"sync"
+)
+
+var IDMap = make(map[uint32]struct{})
+
+var IDMu sync.Mutex
+
+const (
+	HandshakeNotStarted = iota
+	HandshakeInitSent
+	HandShakeRespSent
+	HandshakeDone
 )
 
 type Peer struct {
@@ -19,13 +31,51 @@ type Peer struct {
 	rx       *noise.CipherState
 	tx       *noise.CipherState
 	rs       []byte
+	state    int
 }
 
-func (p *Peer) NewHandshake(initiator bool, keyPair noise.DHKey) {
+func (p *Peer) NewHandshake(initiator bool, keyPair noise.DHKey) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	hs, _ := noiseimpl.NewHandshake(initiator, keyPair, p.rs)
+
+	var hs *noise.HandshakeState
+	var err error
+
+	if initiator {
+		hs, err = noiseimpl.NewInitiatorHS(keyPair, p.rs)
+	} else {
+		hs, err = noiseimpl.NewResponderHS(keyPair)
+	}
+
+	if err != nil {
+		p.hs = nil
+		return err
+	}
+
 	p.hs = hs
+
+	return nil
+}
+
+func GenerateID() uint32 {
+	IDMu.Lock()
+	defer IDMu.Unlock()
+	for {
+		try := rand.Uint32()
+		_, dupe := IDMap[try]
+		if dupe {
+			continue
+		}
+		IDMap[try] = struct{}{}
+		return try
+	}
+}
+
+func (p *Peer) UpdateState(state int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.state = state
 }
 
 func (p *Peer) UpdateStatus(status bool) {
@@ -35,7 +85,7 @@ func (p *Peer) UpdateStatus(status bool) {
 	p.ready = status
 }
 
-func (p *Peer) GetStatus() bool {
+func (p *Peer) isReady() bool {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.ready
@@ -124,6 +174,13 @@ func (p *PeerMap) AddPeerPending(peer *Peer) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.pending[peer.remoteID] = peer
+	return nil
+}
+
+func (p *PeerMap) DeletePendingPeer(peer *Peer) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.pending, peer.remoteID)
 	return nil
 }
 

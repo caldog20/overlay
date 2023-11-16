@@ -26,6 +26,7 @@ type ControlServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
 	Deregister(ctx context.Context, in *DeregisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	WhoIsIp(ctx context.Context, in *WhoIsIPRequest, opts ...grpc.CallOption) (*WhoIsIPReply, error)
+	WhoIsID(ctx context.Context, in *WhoIsIDRequest, opts ...grpc.CallOption) (*WhoIsIDReply, error)
 	RemoteList(ctx context.Context, in *RemoteListRequest, opts ...grpc.CallOption) (*RemoteListReply, error)
 }
 
@@ -64,6 +65,15 @@ func (c *controlServiceClient) WhoIsIp(ctx context.Context, in *WhoIsIPRequest, 
 	return out, nil
 }
 
+func (c *controlServiceClient) WhoIsID(ctx context.Context, in *WhoIsIDRequest, opts ...grpc.CallOption) (*WhoIsIDReply, error) {
+	out := new(WhoIsIDReply)
+	err := c.cc.Invoke(ctx, "/msg.ControlService/WhoIsID", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controlServiceClient) RemoteList(ctx context.Context, in *RemoteListRequest, opts ...grpc.CallOption) (*RemoteListReply, error) {
 	out := new(RemoteListReply)
 	err := c.cc.Invoke(ctx, "/msg.ControlService/RemoteList", in, out, opts...)
@@ -80,6 +90,7 @@ type ControlServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterReply, error)
 	Deregister(context.Context, *DeregisterRequest) (*emptypb.Empty, error)
 	WhoIsIp(context.Context, *WhoIsIPRequest) (*WhoIsIPReply, error)
+	WhoIsID(context.Context, *WhoIsIDRequest) (*WhoIsIDReply, error)
 	RemoteList(context.Context, *RemoteListRequest) (*RemoteListReply, error)
 	mustEmbedUnimplementedControlServiceServer()
 }
@@ -96,6 +107,9 @@ func (UnimplementedControlServiceServer) Deregister(context.Context, *Deregister
 }
 func (UnimplementedControlServiceServer) WhoIsIp(context.Context, *WhoIsIPRequest) (*WhoIsIPReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WhoIsIp not implemented")
+}
+func (UnimplementedControlServiceServer) WhoIsID(context.Context, *WhoIsIDRequest) (*WhoIsIDReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WhoIsID not implemented")
 }
 func (UnimplementedControlServiceServer) RemoteList(context.Context, *RemoteListRequest) (*RemoteListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoteList not implemented")
@@ -167,6 +181,24 @@ func _ControlService_WhoIsIp_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControlService_WhoIsID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WhoIsIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServiceServer).WhoIsID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/msg.ControlService/WhoIsID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServiceServer).WhoIsID(ctx, req.(*WhoIsIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControlService_RemoteList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoteListRequest)
 	if err := dec(in); err != nil {
@@ -203,6 +235,10 @@ var ControlService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WhoIsIp",
 			Handler:    _ControlService_WhoIsIp_Handler,
+		},
+		{
+			MethodName: "WhoIsID",
+			Handler:    _ControlService_WhoIsID_Handler,
 		},
 		{
 			MethodName: "RemoteList",

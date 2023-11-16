@@ -2,11 +2,15 @@ package node
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"github.com/caldog20/go-overlay/header"
+	"github.com/caldog20/go-overlay/msg"
+	noiseimpl "github.com/caldog20/go-overlay/noise"
+	"github.com/caldog20/go-overlay/tun"
 	"github.com/flynn/noise"
-	"gopkg.in/ini.v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
 	"net/netip"
@@ -16,33 +20,20 @@ type Node struct {
 	conn    *net.UDPConn
 	peermap *PeerMap
 	keyPair noise.DHKey
-	sender  bool
+	vpnip   netip.Addr
+	api     msg.ControlServiceClient
+	gconn   *grpc.ClientConn
+	tun     *tun.Tun
+	fw      *Firewall
 }
 
-func NewNode(config *ini.File) *Node {
-	var kp noise.DHKey
-	localSection := config.Section("Local")
-	port := localSection.Key("Port").String()
-	kp.Private, _ = base64.StdEncoding.DecodeString(localSection.Key("PrivateKey").String())
-	kp.Public, _ = base64.StdEncoding.DecodeString(localSection.Key("PublicKey").String())
-	//id, _ := localSection.Key("ID").Uint()
+func NewNode() *Node {
 
-	peerSection := config.Section("Peer")
-	peerStatic, _ := base64.StdEncoding.DecodeString(peerSection.Key("PublicKey").String())
-	peerRemote := peerSection.Key("Remote").String()
-	paddr, _ := net.ResolveUDPAddr("udp4", peerRemote)
-
-	p := &Peer{
-		remote:  paddr,
-		rs:      peerStatic,
-		localID: 100,
-		ready:   false,
-	}
-
+	kp, _ := noiseimpl.TempCS.GenerateKeypair(rand.Reader)
 	pmap := NewPeerMap()
-	pmap.peers[netip.MustParseAddr("192.168.1.1")] = p
 
-	laddr, err := net.ResolveUDPAddr("udp4", ":"+port)
+	// Set up UDP Listen Socket
+	laddr, err := net.ResolveUDPAddr("udp4", ":5555")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,21 +43,50 @@ func NewNode(config *ini.File) *Node {
 		log.Fatal(err)
 	}
 
+	t, err := tun.NewTun()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	n := &Node{
 		conn:    c,
 		peermap: pmap,
 		keyPair: kp,
-		sender:  port == "5555",
+		tun:     t,
+		fw:      NewFirewall(),
 	}
 
 	return n
+}
+
+func (node *Node) QueryNewPeer(remoteIP netip.Addr) {
+	reply, err := node.api.WhoIsIp(context.TODO(), &msg.WhoIsIPRequest{VpnIp: remoteIP.String()})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	peer := &Peer{
+		localID:  GenerateID(),
+		remoteID: 0,
+		ready:    false,
+		vpnip:    remoteIP,
+		state:    HandshakeNotStarted,
+	}
+
+	peer.remote, _ = net.ResolveUDPAddr("udp4", reply.Remote.Remote)
+	peer.rs, _ = base64.StdEncoding.DecodeString(reply.Remote.Id)
+
+	err = node.peermap.AddPeer(peer)
+	if err != nil {
+		log.Println("error adding peer to peermap")
+	}
 }
 
 func (node *Node) handleInbound() {
 	in := make([]byte, 1300)
 	out := make([]byte, 1300)
 	h := &header.Header{}
-
+	fwpacket := &FWPacket{}
 	for {
 		n, raddr, err := node.conn.ReadFromUDP(in)
 		if err != nil {
@@ -81,64 +101,90 @@ func (node *Node) handleInbound() {
 		log.Printf("[%s] received %d bytes", raddr.String(), n)
 
 		log.Printf("Looking up peer with ID %d", h.ID)
-		p := node.peermap.ContainsRemoteID(h.ID)
+		peer := node.peermap.ContainsRemoteID(h.ID)
 
-		if p == nil {
-			// peer not found, check if handshake messae
-			// handle elsewhere
-			log.Println("peer is nil")
-			if h.Type == header.Handshake {
-				if h.SubType == header.Initiator {
-					// Host is trying to handshake with us, lets do it
-					p = &Peer{localID: 200, remoteID: h.ID, remote: raddr, ready: false}
-					p.NewHandshake(false, node.keyPair)
-					// need to add methods or lock peer mutex for this stuff later
-					// Read handshake message and response
-					_, _, _, err = p.hs.ReadMessage(nil, in[header.Len:n])
-					if err != nil {
-						log.Printf("error reading first handshake message: %v", err)
-						continue
-					}
-
-					out, _ = h.Encode(out, header.Handshake, header.Responder, p.localID, 2)
-					// handshake response gets appended to slice above with header at beginning
-					out, rx, tx, err := p.hs.WriteMessage(out, nil)
-					if err != nil {
-						log.Printf("error writing handshake response: %v", err)
-						continue
-					}
-					log.Printf("PEER STATIC OBTAINED FROM HANDSHAKE: %s", base64.StdEncoding.EncodeToString(p.hs.PeerStatic()))
-					p.rx = rx
-					p.tx = tx
-					n, _ = node.conn.WriteToUDP(out, p.remote)
-					log.Printf("wrote handshake response to peer - %d bytes", n)
-					p.ready = true
-					p.vpnip = netip.MustParseAddr("192.168.1.2")
-					node.peermap.AddPeerWithIndices(p)
+		if peer == nil && h.Type == header.Handshake {
+			// Peer trying to handshake, lets responde
+			if h.SubType == header.Initiator {
+				peer = &Peer{localID: GenerateID(), remoteID: h.ID, remote: raddr, ready: false, state: HandShakeRespSent}
+				peer.NewHandshake(false, node.keyPair)
+				// need to add methods or lock peer mutex for this stuff later
+				// Read handshake message and response
+				_, _, _, err = peer.hs.ReadMessage(nil, in[header.Len:n])
+				if err != nil {
+					log.Printf("error reading first handshake message: %v", err)
+					continue
 				}
+				// Respond to handshake
+				out, _ = h.Encode(out, header.Handshake, header.Responder, peer.localID, 2)
+				out, peer.rx, peer.tx, err = peer.hs.WriteMessage(out, nil)
+				if err != nil {
+					log.Printf("error writing handshake response: %v", err)
+					continue
+				}
+
+				n, err = node.conn.WriteToUDP(out, peer.remote)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				// Temporarily query for peer VPN IP
+				pid := base64.StdEncoding.EncodeToString(peer.hs.PeerStatic())
+				resp, _ := node.api.WhoIsID(context.TODO(), &msg.WhoIsIDRequest{Id: pid})
+
+				if err != nil {
+					log.Fatal(err)
+				}
+				log.Printf("wrote handshake response to peer - %d bytes", n)
+				peer.UpdateState(HandshakeDone)
+				peer.vpnip = netip.MustParseAddr(resp.Remote.VpnIp)
+				node.peermap.AddPeerWithIndices(peer)
 			}
-		} else {
-			if !p.ready {
+
+			if h.SubType == header.Responder {
+				peer = node.peermap.ContainsPending(h.ID)
+				if peer == nil {
+					log.Println("no pending peer to complete handshake with")
+					continue
+				}
+				_, peer.tx, peer.rx, err = peer.hs.ReadMessage(nil, in[header.Len:n])
+				if err != nil {
+					log.Fatal("error reading handshake response: %v", err)
+
+				}
+				peer.UpdateStatus(true)
+				peer.remoteID = h.ID
+				node.peermap.AddPeerWithIndices(peer)
+				node.peermap.DeletePendingPeer(peer)
+				log.Printf("handshake completed with peer %s : %s", peer.vpnip.String(), peer.remote.String())
+				continue
+			}
+		}
+
+		if h.Type == header.Data {
+			if !peer.ready {
 				log.Println("peer not ready...cant read regular data")
 				continue
 			}
 
 			h.Parse(in[:n])
-			// lookup peer
-			if p == nil {
-				log.Println("cant find peer in peermap by remote index")
-				continue
-			}
 
-			log.Println("found peer")
-
-			data, err := p.rx.Decrypt(nil, nil, in[header.Len:n])
+			data, err := peer.rx.Decrypt(nil, nil, in[header.Len:n])
 			if err != nil {
 				log.Printf("error decrypting data packet: %v", err)
 			}
 
-			fmt.Printf("PAYLOAD: %s\n", string(data))
+			log.Println("Decrypted Data packet")
 
+			fwpacket, err = node.fw.Parse(data, true)
+			if err != nil {
+				log.Println(err)
+			}
+			if drop := node.fw.Drop(fwpacket); drop {
+				continue
+			}
+
+			node.tun.Write(data)
 		}
 
 	}
@@ -148,60 +194,153 @@ func (node *Node) handleOutbound() {
 	in := make([]byte, 1300)
 	out := make([]byte, 1300)
 	h := &header.Header{}
+	fwpacket := &FWPacket{}
 
-	// preset peer here since we are testing and know what peer we want to send to
-
-	p := node.peermap.Contains(netip.MustParseAddr("192.168.1.1"))
-	if p == nil {
-		log.Fatal("cant find predetermined peer")
-	}
-
-	p.NewHandshake(true, node.keyPair)
-
-	out, _ = h.Encode(out, header.Handshake, header.Initiator, p.localID, 1)
-	log.Println("writing first handshake message")
-	var err error
-	out, _, _, err = p.hs.WriteMessage(out, nil)
-	if err != nil {
-		log.Printf("error writing handshake initiating message: %v", err)
-		return
-	}
-
-	n, _ := node.conn.WriteToUDP(out, p.remote)
-
-	n, err = node.conn.Read(in)
-	h.Parse(in[:n])
-
-	if h.Type == header.Handshake && h.SubType == header.Responder {
-		_, tx, rx, err := p.hs.ReadMessage(nil, in[header.Len:n])
+	for {
+		// Read from tunnel interface
+		n, err := node.tun.Read(in)
 		if err != nil {
-			log.Printf("error reading handshake response: %v", err)
-			return
+			log.Fatal(err)
 		}
-		p.tx = tx
-		p.rx = rx
-		p.ready = true
-		p.remoteID = h.ID
-		node.peermap.AddPeerWithIndices(p)
+
+		// Parse outbound packet with firewall
+		fwpacket, err = node.fw.Parse(in[:n], false)
+
+		if drop := node.fw.Drop(fwpacket); drop {
+			continue
+		}
+
+		// Lookup peer by destination vpn ip
+		// Fix this by updating FW to use netip.Addr
+		remoteIP := netip.MustParseAddr(fwpacket.RemoteIP.String())
+		peer := node.peermap.Contains(remoteIP)
+
+		// We don't know this peer, so ask about it from server
+		// Add to peer list and handle next go around
+		if peer == nil {
+			node.QueryNewPeer(remoteIP)
+			continue
+		}
+
+		// Peer was found, check state to see if its ready otherwise send it to handshaker
+		if peer.isReady() != true {
+			err := peer.NewHandshake(true, node.keyPair)
+			if err != nil {
+				log.Fatal(err)
+			}
+			out, _ = h.Encode(out, header.Handshake, header.Initiator, peer.localID, 1)
+			out, _, _, err = peer.hs.WriteMessage(out, nil)
+			if err != nil {
+				log.Printf("error writing handshake initiating message: %v", err)
+				return
+			}
+			_, err = node.conn.WriteToUDP(out, peer.remote)
+			if err != nil {
+				log.Fatal(err)
+			}
+			peer.UpdateState(HandshakeInitSent)
+			node.peermap.AddPeerPending(peer)
+			continue
+		}
+
+		out, err = h.Encode(out, header.Data, header.None, peer.localID, 0)
+		if err != nil {
+			log.Printf("error encoding header for data packet: %v", err)
+			continue
+		}
+
+		encrypted, err := peer.tx.Encrypt(out, nil, in[:n])
+		if err != nil {
+			log.Printf("error encryping data packet: %v", err)
+			continue
+		}
+
+		n, err = node.conn.WriteToUDP(encrypted, peer.remote)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Wrote %d bytes to peer %s", n, peer.remote.String())
 	}
 
-	out, _ = h.Encode(out, header.Data, header.None, p.localID, 3)
-	t := []byte("Encrypted Channel Working!!!")
-	out, err = p.tx.Encrypt(out, nil, t)
-	if err != nil {
-		log.Printf("error encrypting regular data packet: %v", err)
-		return
-	}
-
-	n, _ = node.conn.WriteToUDP(out, p.remote)
-	log.Printf("wrote %d bytes to %s", n, p.remote.String())
+	//// preset peer here since we are testing and know what peer we want to send to
+	//
+	//p := node.peermap.Contains(netip.MustParseAddr("192.168.1.1"))
+	//if p == nil {
+	//	log.Fatal("cant find predetermined peer")
+	//}
+	//
+	//p.NewHandshake(true, node.keyPair)
+	//
+	//out, _ = h.Encode(out, header.Handshake, header.Initiator, p.localID, 1)
+	//log.Println("writing first handshake message")
+	//
+	//out, _, _, err = p.hs.WriteMessage(out, nil)
+	//if err != nil {
+	//	log.Printf("error writing handshake initiating message: %v", err)
+	//	return
+	//}
+	//
+	//n, _ := node.conn.WriteToUDP(out, p.remote)
+	//
+	//n, err = node.conn.Read(in)
+	//h.Parse(in[:n])
+	//
+	//if h.Type == header.Handshake && h.SubType == header.Responder {
+	//	_, tx, rx, err := p.hs.ReadMessage(nil, in[header.Len:n])
+	//	if err != nil {
+	//		log.Printf("error reading handshake response: %v", err)
+	//		return
+	//	}
+	//	p.tx = tx
+	//	p.rx = rx
+	//	p.ready = true
+	//	p.remoteID = h.ID
+	//	node.peermap.AddPeerWithIndices(p)
+	//}
+	//
+	//out, _ = h.Encode(out, header.Data, header.None, p.localID, 3)
+	//t := []byte("Encrypted Channel Working!!!")
+	//out, err = p.tx.Encrypt(out, nil, t)
+	//if err != nil {
+	//	log.Printf("error encrypting regular data packet: %v", err)
+	//	return
+	//}
+	//
+	//n, _ = node.conn.WriteToUDP(out, p.remote)
+	//log.Printf("wrote %d bytes to %s", n, p.remote.String())
 }
 
 func (node *Node) Run(ctx context.Context) {
-	if node.sender {
-		node.handleOutbound()
-	} else {
-		node.handleInbound()
+	log.SetPrefix("node: ")
+
+	var err error
+	node.gconn, err = grpc.DialContext(ctx, "10.170.241.1:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("error connecting to grpc server: %v", err)
 	}
+
+	node.api = msg.NewControlServiceClient(node.gconn)
+
+	reply, err := node.api.Register(ctx, &msg.RegisterRequest{
+		Id:   base64.StdEncoding.EncodeToString(node.keyPair.Public),
+		Port: "4444",
+	})
+
+	if err != nil {
+		log.Fatalf("Error registering with controller: %v", err)
+	}
+
+	node.vpnip = netip.MustParseAddr(reply.VpnIp)
+	log.Printf("Received VPN IP: %s", node.vpnip.String())
+
+	err = node.tun.ConfigureInterface(node.vpnip)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go node.handleInbound()
+	go node.handleOutbound()
+
 	<-ctx.Done()
+
 }

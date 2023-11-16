@@ -3,7 +3,7 @@ package tun
 import (
 	"fmt"
 	"log"
-	"net"
+	"net/netip"
 	"os/exec"
 	"runtime"
 
@@ -55,7 +55,7 @@ func NewTun() (*Tun, error) {
 }
 
 // TODO: Move route to route handler
-func (tun *Tun) ConfigureInterface(ip net.IP) error {
+func (tun *Tun) ConfigureInterface(ip netip.Addr) error {
 	switch runtime.GOOS {
 	case "linux":
 		if err := exec.Command("/sbin/ip", "link", "set", "dev", tun.Name(), "mtu", "1300").Run(); err != nil {
