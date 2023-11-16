@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/netip"
+	"time"
 )
 
 type Node struct {
@@ -247,10 +248,6 @@ func (node *Node) handleOutbound() {
 			if peer.state == HandshakeInitSent {
 				continue
 			}
-			_, err = node.api.Punch(context.TODO(), &msg.PunchRequest{SrcVpnIp: node.vpnip.String(), DstVpnIp: peer.vpnip.String()})
-			if err != nil {
-				log.Printf("error requesting punch before handshake: %v", err)
-			}
 			err = peer.NewHandshake(true, node.keyPair)
 			if err != nil {
 				log.Fatal(err)
@@ -261,6 +258,11 @@ func (node *Node) handleOutbound() {
 				log.Printf("error writing handshake initiating message: %v", err)
 				return
 			}
+			_, err = node.api.Punch(context.TODO(), &msg.PunchRequest{SrcVpnIp: node.vpnip.String(), DstVpnIp: peer.vpnip.String()})
+			if err != nil {
+				log.Printf("error requesting punch before handshake: %v", err)
+			}
+			time.Sleep(time.Second * 3)
 			_, err = node.conn.WriteToUDP(out, peer.remote)
 			if err != nil {
 				log.Fatal(err)
@@ -365,8 +367,6 @@ func (node *Node) puncher() {
 			continue
 		}
 
-		node.conn.WriteToUDP(out, raddr)
-		node.conn.WriteToUDP(out, raddr)
 		node.conn.WriteToUDP(out, raddr)
 		log.Printf("sent 3 punch packets to %s", req.Remote)
 	}
