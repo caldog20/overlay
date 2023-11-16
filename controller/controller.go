@@ -57,12 +57,13 @@ func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*empt
 
 		// handle unsubscribing and errors
 	}
+	log.Printf("Sent punch request to %s for remote %s", req.DstVpnIp, preq.Remote)
 
 	return &emptypb.Empty{}, nil
 }
 
 func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.ControlService_PunchSubscriberServer) error {
-	log.Printf("vpn ip %s subscribing to punch stream")
+	log.Printf("vpn ip %s subscribing to punch stream", req.VpnIp)
 
 	ctx := stream.Context()
 
