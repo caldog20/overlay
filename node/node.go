@@ -33,7 +33,7 @@ func NewNode() *Node {
 	pmap := NewPeerMap()
 
 	// Set up UDP Listen Socket
-	laddr, err := net.ResolveUDPAddr("udp4", ":5555")
+	laddr, err := net.ResolveUDPAddr("udp4", ":4444")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func (node *Node) QueryNewPeer(remoteIP netip.Addr) {
 		localID:  GenerateID(),
 		remoteID: 0,
 		ready:    false,
-		vpnip:    remoteIP,
+		vpnip:    netip.MustParseAddr(reply.Remote.VpnIp),
 		state:    HandshakeNotStarted,
 	}
 
@@ -104,7 +104,7 @@ func (node *Node) handleInbound() {
 		peer := node.peermap.ContainsRemoteID(h.ID)
 
 		if peer == nil && h.Type == header.Handshake {
-			// Peer trying to handshake, lets responde
+			// Peer trying to handshake, lets respond
 			if h.SubType == header.Initiator {
 				peer = &Peer{localID: GenerateID(), remoteID: h.ID, remote: raddr, ready: false, state: HandShakeRespSent}
 				peer.NewHandshake(false, node.keyPair)
@@ -137,15 +137,21 @@ func (node *Node) handleInbound() {
 				}
 				log.Printf("wrote handshake response to peer - %d bytes", n)
 				peer.UpdateState(HandshakeDone)
+				peer.UpdateStatus(true)
 				peer.vpnip = netip.MustParseAddr(resp.Remote.VpnIp)
 				node.peermap.AddPeerWithIndices(peer)
+				continue
 			}
 
 			if h.SubType == header.Responder {
-				peer = node.peermap.ContainsPending(h.ID)
+				peer = node.peermap.ContainsRemoteID(h.ID)
 				if peer == nil {
-					log.Println("no pending peer to complete handshake with")
-					continue
+					// Search by remote IP in pending
+					peer = node.peermap.ContainsPendingRemote(raddr)
+					if peer == nil {
+						log.Println("no pending peer to complete handshake with")
+						continue
+					}
 				}
 				_, peer.tx, peer.rx, err = peer.hs.ReadMessage(nil, in[header.Len:n])
 				if err != nil {
@@ -171,7 +177,9 @@ func (node *Node) handleInbound() {
 
 			data, err := peer.rx.Decrypt(nil, nil, in[header.Len:n])
 			if err != nil {
+				peer.UpdateStatus(false)
 				log.Printf("error decrypting data packet: %v", err)
+				continue
 			}
 
 			log.Println("Decrypted Data packet")
@@ -218,12 +226,20 @@ func (node *Node) handleOutbound() {
 		// We don't know this peer, so ask about it from server
 		// Add to peer list and handle next go around
 		if peer == nil {
-			node.QueryNewPeer(remoteIP)
+			_, ok := node.peermap.pending[node.vpnip]
+			// peer pending hsake complete, skip query
+			if !ok {
+				// Not pending, query server
+				node.QueryNewPeer(remoteIP)
+			}
 			continue
 		}
 
 		// Peer was found, check state to see if its ready otherwise send it to handshaker
 		if peer.isReady() != true {
+			if peer.state == HandshakeInitSent {
+				continue
+			}
 			err := peer.NewHandshake(true, node.keyPair)
 			if err != nil {
 				log.Fatal(err)

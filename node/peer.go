@@ -122,14 +122,14 @@ func (p *Peer) Remote() *net.UDPAddr {
 type PeerMap struct {
 	mu      sync.RWMutex
 	peers   map[netip.Addr]*Peer
-	pending map[uint32]*Peer
+	pending map[netip.Addr]*Peer
 	indices map[uint32]*Peer
 }
 
 func NewPeerMap() *PeerMap {
 	pm := &PeerMap{
 		peers:   make(map[netip.Addr]*Peer),
-		pending: make(map[uint32]*Peer),
+		pending: make(map[netip.Addr]*Peer),
 		indices: make(map[uint32]*Peer),
 	}
 
@@ -163,24 +163,37 @@ func (p *PeerMap) AddPeerWithIndices(peer *Peer) error {
 	return nil
 }
 
-func (p *PeerMap) ContainsPending(id uint32) *Peer {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	peer := p.pending[id]
+func (p *PeerMap) ContainsPending(vpnip netip.Addr) *Peer {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	peer := p.pending[vpnip]
 	return peer
+}
+
+func (p *PeerMap) ContainsPendingRemote(ip *net.UDPAddr) *Peer {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	for _, v := range p.pending {
+		if v.remote.String() == ip.String() {
+			return v
+		}
+	}
+
+	return nil
 }
 
 func (p *PeerMap) AddPeerPending(peer *Peer) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.pending[peer.remoteID] = peer
+	p.pending[peer.vpnip] = peer
 	return nil
 }
 
 func (p *PeerMap) DeletePendingPeer(peer *Peer) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	delete(p.pending, peer.remoteID)
+	delete(p.pending, peer.vpnip)
 	return nil
 }
 
