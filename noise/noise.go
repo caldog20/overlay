@@ -4,22 +4,6 @@ import "github.com/flynn/noise"
 
 var TempCS = noise.NewCipherSuite(noise.DH25519, noise.CipherAESGCM, noise.HashSHA256)
 
-//func NewHandshake(initiator bool, keyPair noise.DHKey, peerStatic []byte) (*noise.HandshakeState, error) {
-//	var hs *noise.HandshakeState
-//	var err error
-//	if initiator {
-//		hs, err = newInitiatorHS(keyPair, peerStatic)
-//	} else {
-//		hs, err = newResponderHS(keyPair)
-//	}
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return hs, nil
-//}
-
 func NewInitiatorHS(keyPair noise.DHKey, peerStatic []byte) (*noise.HandshakeState, error) {
 	hs, err := noise.NewHandshakeState(noise.Config{
 		CipherSuite:   TempCS,
