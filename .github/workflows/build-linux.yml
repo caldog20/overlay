@@ -28,12 +28,15 @@ jobs:
     
     - name: Install golint
       run: go install golang.org/x/lint/golint@latest
-      
+
+    - name: Make bin directory for artifacts
+      run: mkdir ./bin
+
     - name: build controller
-      run: go build ./cmd/controller
+      run: go build -o ./bin/controller controller ./cmd/controller
 
     - name: build node
-      run: go build ./cmd/node
+      run: go build -o ./bin/node ./cmd/node
 
     #- name: Test
      # run: go test
