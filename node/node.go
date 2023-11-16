@@ -155,7 +155,7 @@ func (node *Node) handleInbound() {
 				}
 				_, peer.tx, peer.rx, err = peer.hs.ReadMessage(nil, in[header.Len:n])
 				if err != nil {
-					log.Fatal("error reading handshake response: %v", err)
+					log.Fatalf("error reading handshake response: %v", err)
 
 				}
 				peer.UpdateStatus(true)
