@@ -31,6 +31,10 @@ server:
 peer:
 	$(GOBUILD) -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
 
+server-mips:
+	GOOS=linux GOARCH=mipsle go build -ldflags '$(LDFLAGS)' -o ./bin/controller ./cmd/controller
+	scp ./bin/controller root@10.170.241.1:~
+
 #test:
 #	$(GOTEST) `go list ./... | grep -v tools | grep -v systray`
 

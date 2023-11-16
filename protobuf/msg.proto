@@ -1,0 +1,42 @@
+syntax = "proto3";
+package protomsg;
+
+option go_package = "github.com/caldog20/go-overlay/protomsg";
+
+message ControlMessage {
+  enum MessageType {
+    None = 0;
+    ClientRegister = 1;
+    RemoteQuery = 2;
+    RemoteQueryReply = 3;
+    ClientUpdate = 4;
+    RequestNATPunch = 5;
+    CloseTunnel = 6;
+  }
+
+  MessageType Type = 1;
+  Payload payload = 2;
+}
+
+message Payload {
+  string VpnIP = 1;
+  repeated IPInfo ip_info = 2;
+}
+
+message IPInfo {
+  string address = 1;
+  string port = 2;
+}
+
+message TestRequestPB {
+  string request = 1;
+}
+
+message TestReplyPB {
+  string reply = 1;
+}
+
+message ClientHandshake {
+  string VpnIP = 1;
+  uint64 Data = 2;
+}
