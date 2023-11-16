@@ -25,6 +25,7 @@ type Node struct {
 	gconn   *grpc.ClientConn
 	tun     *tun.Tun
 	fw      *Firewall
+	pchan   chan string
 }
 
 func NewNode() *Node {
@@ -54,6 +55,7 @@ func NewNode() *Node {
 		keyPair: kp,
 		tun:     t,
 		fw:      NewFirewall(),
+		pchan:   make(chan string),
 	}
 
 	return n
@@ -99,6 +101,11 @@ func (node *Node) handleInbound() {
 		}
 
 		log.Printf("[%s] received %d bytes", raddr.String(), n)
+
+		if h.Type == header.Punch {
+			// Drop received punch packets
+			continue
+		}
 
 		log.Printf("Looking up peer with ID %d", h.ID)
 		peer := node.peermap.ContainsRemoteID(h.ID)
@@ -326,6 +333,31 @@ func (node *Node) handleOutbound() {
 	//log.Printf("wrote %d bytes to %s", n, p.remote.String())
 }
 
+func (node *Node) puncher() {
+	h := &header.Header{}
+	out := make([]byte, header.Len)
+	for {
+		rstring := <-node.pchan
+		raddr, err := net.ResolveUDPAddr("udp4", rstring)
+		if err != nil {
+			log.Printf("failed to resolve udp address to punch towards: %v", err)
+			continue
+		}
+
+		out, err = h.Encode(out, header.Punch, header.None, 0, 0)
+		if err != nil {
+			log.Printf("error encoding header for punch: %v", err)
+			continue
+		}
+
+		node.conn.WriteToUDP(out, raddr)
+		node.conn.WriteToUDP(out, raddr)
+		node.conn.WriteToUDP(out, raddr)
+		log.Printf("sent 3 punch packets to %s", rstring)
+	}
+
+}
+
 func (node *Node) Run(ctx context.Context) {
 	log.SetPrefix("node: ")
 
@@ -356,6 +388,7 @@ func (node *Node) Run(ctx context.Context) {
 
 	go node.handleInbound()
 	go node.handleOutbound()
+	go node.puncher()
 
 	<-ctx.Done()
 
