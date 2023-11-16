@@ -83,8 +83,8 @@ func (node *Node) QueryNewPeer(remoteIP netip.Addr) {
 }
 
 func (node *Node) handleInbound() {
-	in := make([]byte, 1300)
-	out := make([]byte, 1300)
+	in := make([]byte, 1400)
+	out := make([]byte, 1400)
 	h := &header.Header{}
 	fwpacket := &FWPacket{}
 	for {
@@ -168,13 +168,13 @@ func (node *Node) handleInbound() {
 		}
 
 		if h.Type == header.Data {
-			if !peer.ready {
+			if !peer.isReady() {
 				log.Println("peer not ready...cant read regular data")
 				continue
 			}
 
 			h.Parse(in[:n])
-
+			peer.rx.SetNonce(22)
 			data, err := peer.rx.Decrypt(nil, nil, in[header.Len:n])
 			if err != nil {
 				peer.UpdateStatus(false)
@@ -199,8 +199,8 @@ func (node *Node) handleInbound() {
 }
 
 func (node *Node) handleOutbound() {
-	in := make([]byte, 1300)
-	out := make([]byte, 1300)
+	in := make([]byte, 1400)
+	out := make([]byte, 1400)
 	h := &header.Header{}
 	fwpacket := &FWPacket{}
 
@@ -264,7 +264,7 @@ func (node *Node) handleOutbound() {
 			log.Printf("error encoding header for data packet: %v", err)
 			continue
 		}
-
+		peer.tx.SetNonce(22)
 		encrypted, err := peer.tx.Encrypt(out, nil, in[:n])
 		if err != nil {
 			log.Printf("error encryping data packet: %v", err)
@@ -330,7 +330,7 @@ func (node *Node) Run(ctx context.Context) {
 	log.SetPrefix("node: ")
 
 	var err error
-	node.gconn, err = grpc.DialContext(ctx, "10.170.241.1:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	node.gconn, err = grpc.DialContext(ctx, "caldog20.ddns.net:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("error connecting to grpc server: %v", err)
 	}

@@ -67,14 +67,14 @@ func (tun *Tun) ConfigureInterface(ip netip.Addr) error {
 		if err := exec.Command("/sbin/ip", "link", "set", "dev", tun.Name(), "up").Run(); err != nil {
 			return fmt.Errorf("ip link error: %w", err)
 		}
-		if err := exec.Command("/sbin/ip", "route", "add", "192.168.1.0/24", "via", ip.String()).Run(); err != nil {
+		if err := exec.Command("/sbin/ip", "route", "add", "192.168.77.0/24", "via", ip.String()).Run(); err != nil {
 			log.Fatalf("route add error: %v", err)
 		}
 	case "darwin":
 		if err := exec.Command("/sbin/ifconfig", tun.Name(), "mtu", "1300", ip.String(), ip.String(), "up").Run(); err != nil {
 			return fmt.Errorf("ifconfig error %v: %w", tun.Name(), err)
 		}
-		if err := exec.Command("/sbin/route", "-n", "add", "-net", "192.168.1.0/24", ip.String()).Run(); err != nil {
+		if err := exec.Command("/sbin/route", "-n", "add", "-net", "192.168.77.0/24", ip.String()).Run(); err != nil {
 			log.Fatalf("route add error: %v", err)
 		}
 	default:
@@ -82,7 +82,7 @@ func (tun *Tun) ConfigureInterface(ip netip.Addr) error {
 	}
 
 	log.Printf("set tunnel IP successful: %v %v", tun.Name(), ip.String()+"/32")
-	log.Printf("set route successful: %v via %v dev %v", "192.168.1.0/24", ip.String(), tun.Name())
+	log.Printf("set route successful: %v via %v dev %v", "192.168.77.0/24", ip.String(), tun.Name())
 	return nil
 }
 

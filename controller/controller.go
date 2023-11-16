@@ -167,7 +167,7 @@ func RunController(ctx context.Context) {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	i, err := ipam.NewIpam("192.168.1.0/24")
+	i, err := ipam.NewIpam("192.168.77.0/24")
 	if err != nil {
 		log.Fatal(err)
 	}
