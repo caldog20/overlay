@@ -345,7 +345,7 @@ func (node *Node) puncher() {
 	}
 
 	h := &header.Header{}
-	out := make([]byte, header.Len)
+	out := make([]byte, header.Len+4)
 	for {
 		req, err := puncher.Recv()
 		if err != nil {
@@ -366,10 +366,13 @@ func (node *Node) puncher() {
 			continue
 		}
 
-		node.conn.WriteToUDP(out, raddr)
-		node.conn.WriteToUDP(out, raddr)
-		node.conn.WriteToUDP(out, raddr)
-		log.Printf("sent 3 punch packets to %s", req.Remote)
+		var b int
+		for i := 0; i < 5; i++ {
+			n, _ := node.conn.WriteToUDP(out, raddr)
+			b += n
+		}
+
+		log.Printf("sent 5 punch packets to %s - %d bytes", req.Remote, b)
 	}
 
 }

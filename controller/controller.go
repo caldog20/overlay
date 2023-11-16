@@ -63,9 +63,10 @@ func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*empt
 }
 
 func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.ControlService_PunchSubscriberServer) error {
-	log.Printf("vpn ip %s subscribing to punch stream", req.VpnIp)
-
 	ctx := stream.Context()
+	p, _ := peer.FromContext(ctx)
+	remote := p.Addr.String()
+	log.Printf("remote: %s vpn ip %s subscribing to punch stream", remote, req.VpnIp)
 
 	fin := make(chan bool)
 
