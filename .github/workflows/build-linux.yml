@@ -33,7 +33,7 @@ jobs:
       run: mkdir ./bin
 
     - name: build controller
-      run: go build -o ./bin/controller controller ./cmd/controller
+      run: go build -o ./bin/controller ./cmd/controller
 
     - name: build node
       run: go build -o ./bin/node ./cmd/node
