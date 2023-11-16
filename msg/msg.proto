@@ -51,6 +51,20 @@ message WhoIsIDReply {
   Remote remote = 1;
 }
 
+message PunchRequest {
+  string src_vpn_ip = 1;
+  string dst_vpn_ip = 2;
+}
+
+message PunchNotification {
+  string remote = 1;
+}
+
+message PunchSubscribe {
+  string vpn_ip = 1;
+}
+
+
 
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
@@ -58,6 +72,7 @@ service ControlService {
   rpc WhoIsIp(WhoIsIPRequest) returns (WhoIsIPReply) {}
   rpc WhoIsID(WhoIsIDRequest) returns (WhoIsIDReply) {}
   rpc RemoteList(RemoteListRequest) returns (RemoteListReply) {}
-  //  rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}
+  rpc PunchSubscriber(PunchSubscribe) returns (stream PunchNotification) {}
+  rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}
   //  rpc PunchNotifier(PunchSubscribe) returns (stream PunchNotification) {}
 }

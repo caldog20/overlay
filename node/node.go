@@ -247,7 +247,11 @@ func (node *Node) handleOutbound() {
 			if peer.state == HandshakeInitSent {
 				continue
 			}
-			err := peer.NewHandshake(true, node.keyPair)
+			_, err = node.api.Punch(context.TODO(), &msg.PunchRequest{SrcVpnIp: node.vpnip.String(), DstVpnIp: peer.vpnip.String()})
+			if err != nil {
+				log.Printf("error requesting punch before handshake: %v", err)
+			}
+			err = peer.NewHandshake(true, node.keyPair)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -334,11 +338,22 @@ func (node *Node) handleOutbound() {
 }
 
 func (node *Node) puncher() {
+	puncher, err := node.api.PunchSubscriber(context.TODO(), &msg.PunchSubscribe{VpnIp: node.vpnip.String()})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	h := &header.Header{}
 	out := make([]byte, header.Len)
 	for {
-		rstring := <-node.pchan
-		raddr, err := net.ResolveUDPAddr("udp4", rstring)
+		req, err := puncher.Recv()
+		if err != nil {
+			puncher = nil
+			log.Fatal("error receiving from punch stream...fatal")
+			return
+		}
+
+		raddr, err := net.ResolveUDPAddr("udp4", req.Remote)
 		if err != nil {
 			log.Printf("failed to resolve udp address to punch towards: %v", err)
 			continue
@@ -353,7 +368,7 @@ func (node *Node) puncher() {
 		node.conn.WriteToUDP(out, raddr)
 		node.conn.WriteToUDP(out, raddr)
 		node.conn.WriteToUDP(out, raddr)
-		log.Printf("sent 3 punch packets to %s", rstring)
+		log.Printf("sent 3 punch packets to %s", req.Remote)
 	}
 
 }
@@ -386,9 +401,9 @@ func (node *Node) Run(ctx context.Context) {
 		log.Fatal(err)
 	}
 
+	go node.puncher()
 	go node.handleInbound()
 	go node.handleOutbound()
-	go node.puncher()
 
 	<-ctx.Done()
 
