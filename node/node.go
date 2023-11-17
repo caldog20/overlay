@@ -206,6 +206,20 @@ func (node *Node) handleInbound() {
 	}
 }
 
+//func (node *Node) pre(raddr *net.UDPAddr) {
+//	h := &header.Header{}
+//	out := make([]byte, header.Len+4)
+//
+//	out, _ = h.Encode(out, header.Punch, header.None, 0, 0)
+//
+//	var b int
+//	for i := 0; i < 5; i++ {
+//		n, _ := node.conn.WriteToUDP(out, raddr)
+//		b += n
+//	}
+//
+//}
+
 func (node *Node) handleOutbound() {
 	in := make([]byte, 1400)
 	out := make([]byte, 1400)
@@ -252,6 +266,7 @@ func (node *Node) handleOutbound() {
 			if err != nil {
 				log.Printf("error requesting punch before handshake: %v", err)
 			}
+
 			err = peer.NewHandshake(true, node.keyPair)
 			if err != nil {
 				log.Fatal(err)
@@ -367,7 +382,7 @@ func (node *Node) puncher() {
 		}
 
 		var b int
-		for i := 0; i < 5; i++ {
+		for i := 0; i < 3; i++ {
 			n, _ := node.conn.WriteToUDP(out, raddr)
 			b += n
 		}
@@ -381,7 +396,7 @@ func (node *Node) Run(ctx context.Context) {
 	log.SetPrefix("node: ")
 
 	var err error
-	node.gconn, err = grpc.DialContext(ctx, "caldog20.ddns.net:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	node.gconn, err = grpc.DialContext(ctx, "x.x.x.x:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("error connecting to grpc server: %v", err)
 	}
