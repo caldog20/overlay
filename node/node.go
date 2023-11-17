@@ -182,7 +182,7 @@ func (node *Node) handleInbound() {
 			}
 
 			h.Parse(in[:n])
-			peer.rx.SetNonce(22)
+			//peer.rx.SetNonce(22)
 			data, err := peer.rx.Decrypt(nil, nil, in[header.Len:n])
 			if err != nil {
 				peer.UpdateStatus(false)
@@ -240,6 +240,14 @@ func (node *Node) handleOutbound() {
 			continue
 		}
 
+		// TODO: Maybe let firewall handle this case for mac, linux kernel handles this for us
+		tempIP := net.ParseIP(node.vpnip.String())
+		if tempIP.Equal(fwpacket.RemoteIP) {
+			// Packet destination IP matches local tunnel IP
+			// drop packets
+			continue
+		}
+
 		// Lookup peer by destination vpn ip
 		// Fix this by updating FW to use netip.Addr
 		remoteIP := netip.MustParseAddr(fwpacket.RemoteIP.String())
@@ -257,7 +265,7 @@ func (node *Node) handleOutbound() {
 			continue
 		}
 
-		// Peer was found, check state to see if its ready otherwise send it to handshaker
+		// Peer was found, check state to see if its ready otherwise send it to handshake
 		if peer.isReady() != true {
 			if peer.state == HandshakeInitSent {
 				continue
@@ -291,7 +299,7 @@ func (node *Node) handleOutbound() {
 			log.Printf("error encoding header for data packet: %v", err)
 			continue
 		}
-		peer.tx.SetNonce(22)
+		//peer.tx.SetNonce(22)
 		encrypted, err := peer.tx.Encrypt(out, nil, in[:n])
 		if err != nil {
 			log.Printf("error encryping data packet: %v", err)
@@ -360,7 +368,8 @@ func (node *Node) puncher() {
 	}
 
 	h := &header.Header{}
-	out := make([]byte, header.Len+4)
+	out := make([]byte, header.Len)
+	out, err = h.Encode(out, header.Punch, header.None, 0, 0)
 	for {
 		req, err := puncher.Recv()
 		if err != nil {
@@ -375,7 +384,6 @@ func (node *Node) puncher() {
 			continue
 		}
 
-		out, err = h.Encode(out, header.Punch, header.None, 0, 0)
 		if err != nil {
 			log.Printf("error encoding header for punch: %v", err)
 			continue
@@ -396,7 +404,7 @@ func (node *Node) Run(ctx context.Context) {
 	log.SetPrefix("node: ")
 
 	var err error
-	node.gconn, err = grpc.DialContext(ctx, "x.x.x.x:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	node.gconn, err = grpc.DialContext(ctx, "10.170.241.1:5555", grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("error connecting to grpc server: %v", err)
 	}
