@@ -181,8 +181,8 @@ func (node *Node) handleInbound() {
 				continue
 			}
 
-			h.Parse(in[:n])
-			//peer.rx.SetNonce(22)
+			err = h.Parse(in[:n])
+			peer.rx.SetNonce(h.MsgCounter)
 			data, err := peer.rx.Decrypt(nil, nil, in[header.Len:n])
 			if err != nil {
 				peer.UpdateStatus(false)
@@ -294,12 +294,14 @@ func (node *Node) handleOutbound() {
 			continue
 		}
 
-		out, err = h.Encode(out, header.Data, header.None, peer.localID, 0)
+		out, err = h.Encode(out, header.Data, header.None, peer.localID, peer.tx.Nonce())
 		if err != nil {
+			if err == noise.ErrMaxNonce {
+				log.Fatal(err)
+			}
 			log.Printf("error encoding header for data packet: %v", err)
 			continue
 		}
-		//peer.tx.SetNonce(22)
 		encrypted, err := peer.tx.Encrypt(out, nil, in[:n])
 		if err != nil {
 			log.Printf("error encryping data packet: %v", err)
