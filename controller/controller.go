@@ -100,7 +100,6 @@ func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.Cont
 		}
 
 	}
-
 }
 
 func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) (*msg.RegisterReply, error) {
@@ -269,5 +268,4 @@ func RunController(ctx context.Context) {
 	}
 	wg.Wait()
 	log.Println("controller shutting down")
-
 }

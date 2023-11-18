@@ -3,6 +3,7 @@ package header
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 type HeaderVersion uint8
@@ -26,19 +27,26 @@ const (
 // // Data signifies data packet, no protobuf message
 // // Control signifies protobuf message
 // // Test signifies protobuf test messages
+//
+//go:generate stringer -type=MessageType
 const (
 	Punch     MessageType = 0
 	Handshake MessageType = 1
 	Data      MessageType = 2
 	Keepalive MessageType = 3
-	Test      MessageType = 4
+	ClosePeer MessageType = 4
+	Test      MessageType = 5
 )
 
 // Control Subtypes
+//
+//go:generate stringer -type=MessageSubType
 const (
 	None      MessageSubType = 0
 	Initiator MessageSubType = 1
 	Responder MessageSubType = 2
+	Request   MessageSubType = 3
+	Reply     MessageSubType = 4
 )
 
 // Test SubTypes
@@ -57,35 +65,35 @@ type Header struct {
 	Unused     uint8
 }
 
-//var (
-//	MessageTypeMap = map[MessageType]string{
-//		Invalid: "invalid",
-//		Data:    "data",
-//		Control: "control",
-//		Test:    "test",
-//	}
-//
-//	SubTypeMapNone = map[MessageSubType]string{None: "none"}
-//	SubTypeMap     = map[MessageType]*map[MessageSubType]string{
-//		Invalid: &SubTypeMapNone,
-//		Data:    &SubTypeMapNone,
-//		Control: {
-//			None:      "none",
-//			Protobuf:  "protobuf",
-//			Request:   "request",
-//			Reply:     "reply",
-//			KeepAlive: "keepalive",
-//		},
-//		Test: {
-//			TestRequest: "test request",
-//			TestReply:   "test reply",
-//		},
-//		Handshake: {
-//			Request: "request",
-//			Reply:   "reply",
-//		},
-//	}
-//)
+var (
+	MessageTypeMap = map[MessageType]string{
+		Punch:     "punch",
+		Handshake: "handshake",
+		Data:      "data",
+		Keepalive: "keepalive",
+		ClosePeer: "closepeer",
+		Test:      "test",
+	}
+
+	SubTypeMapNone = map[MessageSubType]string{None: "none"}
+	SubTypeMap     = map[MessageType]*map[MessageSubType]string{
+		Punch: &SubTypeMapNone,
+		Data:  &SubTypeMapNone,
+		Handshake: {
+			Initiator: "initiator",
+			Responder: "responder",
+		},
+		Keepalive: {
+			Request: "keepalive request",
+			Reply:   "keepalive reply",
+		},
+		ClosePeer: &SubTypeMapNone,
+		Test: {
+			TestRequest: "test request",
+			TestReply:   "test reply",
+		},
+	}
+)
 
 func (h *Header) Encode(b []byte, t MessageType, st MessageSubType, id uint32, counter uint64) ([]byte, error) {
 	if h == nil {
@@ -134,26 +142,40 @@ func (h *Header) Parse(b []byte) error {
 	return nil
 }
 
-//func (h *Header) String() string {
-//	if h == nil {
-//		return "nil"
-//	}
-//
-//	return fmt.Sprintf("header: {version: %d type: %s subtype: %s unused: %#x", h.Version, h.TypeName(), h.SubTypeName(), h.Unused)
-//}
-//
-//func (h *Header) TypeName() string {
-//	if tn, found := MessageTypeMap[h.Type]; found {
-//		return tn
-//	}
-//	return "unknown type"
-//}
-//
-//func (h *Header) SubTypeName() string {
-//	if n, ok := SubTypeMap[h.Type]; ok {
-//		if x, ok := (*n)[h.SubType]; ok {
-//			return x
-//		}
-//	}
-//	return "unknown subtype"
-//}
+func (h *Header) String() string {
+	if h == nil {
+		return "nil"
+	}
+
+	return fmt.Sprintf("header: {version: %d type: %s subtype: %s index: %d msgcounter: %d unused: #%x", h.Version, h.TypeName(), h.SubTypeName(), h.Index(), h.Counter(), h.Unused)
+}
+
+func (h *Header) TypeName() string {
+	if tn, found := MessageTypeMap[h.Type]; found {
+		return tn
+	}
+	return "unknown type"
+}
+
+func (h *Header) SubTypeName() string {
+	if n, ok := SubTypeMap[h.Type]; ok {
+		if x, ok := (*n)[h.SubType]; ok {
+			return x
+		}
+	}
+	return "unknown subtype"
+}
+
+func (h *Header) Index() uint32 {
+	if h == nil {
+		return 0
+	}
+	return h.ID
+}
+
+func (h *Header) Counter() uint64 {
+	if h == nil {
+		return 0
+	}
+	return h.MsgCounter
+}

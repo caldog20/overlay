@@ -2,7 +2,7 @@ package noiseimpl
 
 import "github.com/flynn/noise"
 
-var TempCS = noise.NewCipherSuite(noise.DH25519, noise.CipherAESGCM, noise.HashSHA256)
+var TempCS = noise.NewCipherSuite(noise.DH25519, noise.CipherChaChaPoly, noise.HashBLAKE2s)
 
 func NewInitiatorHS(keyPair noise.DHKey, peerStatic []byte) (*noise.HandshakeState, error) {
 	hs, err := noise.NewHandshakeState(noise.Config{
