@@ -18,7 +18,8 @@ import (
 )
 
 type client struct {
-	Id          string
+	Id          uint32
+	Key         string
 	Hostname    string
 	VpnIP       string
 	Remote      string
@@ -103,22 +104,31 @@ func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.Cont
 }
 
 func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) (*msg.RegisterReply, error) {
-	if req.Id == "" {
-		return nil, errors.New("id must not be nil")
+	if req.Id == 0 {
+		return nil, errors.New("id must not be zero")
 	}
-
+	if req.Key == "" {
+		return nil, errors.New("key must not be nil")
+	}
+	// Get remote address of peer
 	p, _ := peer.FromContext(ctx)
 	remote := p.Addr.String()
 
-	cip, err := s.ipman.AllocateIP(req.Id)
+	// Check to see if IP is already allocated for ID
+
+	cip, err := s.ipman.WhoIsByID(req.Id)
 	if err != nil {
-		log.Println(err)
-		return nil, errors.New("error allocating IP address")
+		// ID not found, allocate
+		cip, err = s.ipman.AllocateIP(req.Id)
+		if err != nil {
+			log.Println(err)
+			return nil, errors.New("error allocating IP address")
+		}
 	}
 
 	newclient := &client{
-		Id: req.Id,
-		//Hostname: req.Hostname,
+		Id:     req.Id,
+		Key:    req.Key,
 		VpnIP:  cip,
 		Remote: strings.Split(remote, ":")[0] + ":" + req.Port,
 	}
@@ -131,31 +141,21 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 }
 
 func (s *ControlServer) Deregister(ctx context.Context, req *msg.DeregisterRequest) (*emptypb.Empty, error) {
-	if req.Id == "" {
-		return nil, errors.New("uuid must not be nil")
+	if req.Id == 0 {
+		return nil, errors.New("id must not be zero")
 	}
-
-	//p, _ := peer.FromContext(ctx)
-	//remote := p.Addr.String()
 
 	s.clients.Delete(req.Id)
-
-	// change this to return a bool for found
-	ip, err := s.ipman.WhoIsByID(req.Id)
-	if err != nil {
-		log.Printf("ip not found: %v", err)
-	}
-
-	err = s.ipman.DeallocateIP(ip)
-	if err != nil {
-		log.Printf("cannot deallocate ip: %v", err)
-	}
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*msg.WhoIsIPReply, error) {
+func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*msg.Remote, error) {
 	vpnip := req.GetVpnIp()
+
+	if vpnip == "" {
+		return nil, errors.New("ip must not be nil")
+	}
 
 	id, err := s.ipman.WhoIsByIP(vpnip)
 	if err != nil {
@@ -170,20 +170,22 @@ func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*
 	// check cast error here
 	client := c.(*client)
 
-	return &msg.WhoIsIPReply{
-		Remote: &msg.Remote{
-			Id:     client.Id,
-			VpnIp:  client.VpnIP,
-			Remote: client.Remote,
-		},
+	return &msg.Remote{
+		Id:     client.Id,
+		Key:    client.Key,
+		VpnIp:  client.VpnIP,
+		Remote: client.Remote,
 	}, nil
 }
 
-func (s *ControlServer) WhoIsID(ctx context.Context, req *msg.WhoIsIDRequest) (*msg.WhoIsIDReply, error) {
+func (s *ControlServer) WhoIsID(ctx context.Context, req *msg.WhoIsIDRequest) (*msg.Remote, error) {
 	id := req.GetId()
+	if id == 0 {
+		return nil, errors.New("id must not be zero")
+	}
 
-	ip, err := s.ipman.WhoIsByID(id)
-	if err != nil {
+	c, found := s.clients.Load(id)
+	if !found {
 		return nil, errors.New("client not found")
 	}
 
@@ -192,19 +194,24 @@ func (s *ControlServer) WhoIsID(ctx context.Context, req *msg.WhoIsIDRequest) (*
 	//	return nil, errors.New("vpn ip not found")
 	//}
 
-	// check cast error here
-	//client := c.(*client)
+	//check cast error here
+	client := c.(*client)
 
-	return &msg.WhoIsIDReply{
-		Remote: &msg.Remote{
-			VpnIp: ip,
-		},
+	return &msg.Remote{
+		Id:     client.Id,
+		Key:    client.Key,
+		VpnIp:  client.VpnIP,
+		Remote: client.Remote,
 	}, nil
 }
 
 func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListRequest) (*msg.RemoteListReply, error) {
-	reqid := req.Id
-	_, ok := s.clients.Load(reqid)
+	id := req.Id
+	if id == 0 {
+		return nil, errors.New("id must not be zero")
+	}
+
+	_, ok := s.clients.Load(id)
 	if !ok {
 		return nil, errors.New("requesting client not registered")
 	}
@@ -212,15 +219,16 @@ func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListReque
 	var rl []*msg.Remote
 
 	s.clients.Range(func(k, v interface{}) bool {
-		if k.(string) != reqid {
+		if k.(uint32) != id {
 			r := &msg.Remote{
 				Id:     v.(*client).Id,
+				Key:    v.(*client).Key,
 				VpnIp:  v.(*client).VpnIP,
 				Remote: v.(*client).Remote,
 			}
 			rl = append(rl, r)
 		} else {
-			log.Printf("not sending requestor its own client info: %v", reqid)
+			log.Printf("not sending requestor its own client info: %v", id)
 		}
 
 		return true

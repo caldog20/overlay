@@ -7,14 +7,16 @@ package msg;
 option go_package = "github.com/caldog20/go-overlay/msg";
 
 message Remote {
-  string id = 1;
-  string vpn_ip = 2;
-  string remote = 3;
+  uint32 id = 1;
+  string key = 2;
+  string vpn_ip = 3;
+  string remote = 4;
 }
 
 message RegisterRequest {
-  string id = 1;
-  string port = 2;
+  uint32 id = 1;
+  string key = 2;
+  string port = 3;
 }
 
 message RegisterReply {
@@ -22,12 +24,11 @@ message RegisterReply {
 }
 
 message DeregisterRequest {
-  string id = 1;
-  string vpnip = 2;
+  uint32 id = 1;
 }
 
 message RemoteListRequest {
-  string id = 1;
+  uint32 id = 1;
 }
 
 message RemoteListReply {
@@ -38,17 +39,8 @@ message WhoIsIPRequest {
   string vpn_ip = 1;
 }
 
-// Change this to reuse remote object
-message WhoIsIPReply {
-  Remote remote = 1;
-}
-
 message WhoIsIDRequest {
-  string id = 1;
-}
-
-message WhoIsIDReply {
-  Remote remote = 1;
+  uint32 id = 1;
 }
 
 message PunchRequest {
@@ -69,8 +61,8 @@ message PunchSubscribe {
 service ControlService {
   rpc Register(RegisterRequest) returns (RegisterReply) {}
   rpc Deregister(DeregisterRequest) returns (google.protobuf.Empty) {}
-  rpc WhoIsIp(WhoIsIPRequest) returns (WhoIsIPReply) {}
-  rpc WhoIsID(WhoIsIDRequest) returns (WhoIsIDReply) {}
+  rpc WhoIsIp(WhoIsIPRequest) returns (Remote) {}
+  rpc WhoIsID(WhoIsIDRequest) returns (Remote) {}
   rpc RemoteList(RemoteListRequest) returns (RemoteListReply) {}
   rpc PunchSubscriber(PunchSubscribe) returns (stream PunchNotification) {}
   rpc Punch(PunchRequest) returns (google.protobuf.Empty) {}

@@ -25,8 +25,8 @@ const _ = grpc.SupportPackageIsVersion7
 type ControlServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterReply, error)
 	Deregister(ctx context.Context, in *DeregisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	WhoIsIp(ctx context.Context, in *WhoIsIPRequest, opts ...grpc.CallOption) (*WhoIsIPReply, error)
-	WhoIsID(ctx context.Context, in *WhoIsIDRequest, opts ...grpc.CallOption) (*WhoIsIDReply, error)
+	WhoIsIp(ctx context.Context, in *WhoIsIPRequest, opts ...grpc.CallOption) (*Remote, error)
+	WhoIsID(ctx context.Context, in *WhoIsIDRequest, opts ...grpc.CallOption) (*Remote, error)
 	RemoteList(ctx context.Context, in *RemoteListRequest, opts ...grpc.CallOption) (*RemoteListReply, error)
 	PunchSubscriber(ctx context.Context, in *PunchSubscribe, opts ...grpc.CallOption) (ControlService_PunchSubscriberClient, error)
 	Punch(ctx context.Context, in *PunchRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -58,8 +58,8 @@ func (c *controlServiceClient) Deregister(ctx context.Context, in *DeregisterReq
 	return out, nil
 }
 
-func (c *controlServiceClient) WhoIsIp(ctx context.Context, in *WhoIsIPRequest, opts ...grpc.CallOption) (*WhoIsIPReply, error) {
-	out := new(WhoIsIPReply)
+func (c *controlServiceClient) WhoIsIp(ctx context.Context, in *WhoIsIPRequest, opts ...grpc.CallOption) (*Remote, error) {
+	out := new(Remote)
 	err := c.cc.Invoke(ctx, "/msg.ControlService/WhoIsIp", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -67,8 +67,8 @@ func (c *controlServiceClient) WhoIsIp(ctx context.Context, in *WhoIsIPRequest, 
 	return out, nil
 }
 
-func (c *controlServiceClient) WhoIsID(ctx context.Context, in *WhoIsIDRequest, opts ...grpc.CallOption) (*WhoIsIDReply, error) {
-	out := new(WhoIsIDReply)
+func (c *controlServiceClient) WhoIsID(ctx context.Context, in *WhoIsIDRequest, opts ...grpc.CallOption) (*Remote, error) {
+	out := new(Remote)
 	err := c.cc.Invoke(ctx, "/msg.ControlService/WhoIsID", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -132,8 +132,8 @@ func (c *controlServiceClient) Punch(ctx context.Context, in *PunchRequest, opts
 type ControlServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterReply, error)
 	Deregister(context.Context, *DeregisterRequest) (*emptypb.Empty, error)
-	WhoIsIp(context.Context, *WhoIsIPRequest) (*WhoIsIPReply, error)
-	WhoIsID(context.Context, *WhoIsIDRequest) (*WhoIsIDReply, error)
+	WhoIsIp(context.Context, *WhoIsIPRequest) (*Remote, error)
+	WhoIsID(context.Context, *WhoIsIDRequest) (*Remote, error)
 	RemoteList(context.Context, *RemoteListRequest) (*RemoteListReply, error)
 	PunchSubscriber(*PunchSubscribe, ControlService_PunchSubscriberServer) error
 	Punch(context.Context, *PunchRequest) (*emptypb.Empty, error)
@@ -150,10 +150,10 @@ func (UnimplementedControlServiceServer) Register(context.Context, *RegisterRequ
 func (UnimplementedControlServiceServer) Deregister(context.Context, *DeregisterRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Deregister not implemented")
 }
-func (UnimplementedControlServiceServer) WhoIsIp(context.Context, *WhoIsIPRequest) (*WhoIsIPReply, error) {
+func (UnimplementedControlServiceServer) WhoIsIp(context.Context, *WhoIsIPRequest) (*Remote, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WhoIsIp not implemented")
 }
-func (UnimplementedControlServiceServer) WhoIsID(context.Context, *WhoIsIDRequest) (*WhoIsIDReply, error) {
+func (UnimplementedControlServiceServer) WhoIsID(context.Context, *WhoIsIDRequest) (*Remote, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WhoIsID not implemented")
 }
 func (UnimplementedControlServiceServer) RemoteList(context.Context, *RemoteListRequest) (*RemoteListReply, error) {

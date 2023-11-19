@@ -10,7 +10,7 @@ import (
 
 type IP struct {
 	ip       netip.Addr
-	clientID string
+	clientID uint32
 	hostname string
 }
 
@@ -50,9 +50,9 @@ func (i *Ipam) SetPrefix(p string) error {
 	return nil
 }
 
-func (i *Ipam) AllocateIP(clientID string) (string, error) {
-	if clientID == "" {
-		return "", errors.New("client ID must not be nil when allocating IP")
+func (i *Ipam) AllocateIP(clientID uint32) (string, error) {
+	if clientID == 0 {
+		return "", errors.New("client ID must not be zero when allocating IP")
 	}
 
 	i.mu.Lock()
@@ -92,9 +92,9 @@ func (i *Ipam) DeallocateIP(ip string) error {
 	return errors.New("ip not found in pool, failed to deallocate")
 }
 
-func (i *Ipam) WhoIsByIP(clientIP string) (string, error) {
+func (i *Ipam) WhoIsByIP(clientIP string) (uint32, error) {
 	if clientIP == "" {
-		return "", errors.New("client IP must not be nil when searching for client ID")
+		return 0, errors.New("client IP must not be nil when searching for client ID")
 	}
 
 	i.mu.Lock()
@@ -104,12 +104,12 @@ func (i *Ipam) WhoIsByIP(clientIP string) (string, error) {
 	if found {
 		return ip.clientID, nil
 	}
-	return "", errors.New("Client IP not found")
+	return 0, errors.New("Client IP not found")
 }
 
-func (i *Ipam) WhoIsByID(clientID string) (string, error) {
-	if clientID == "" {
-		return "", errors.New("client ID must not be nil when searching for client IP")
+func (i *Ipam) WhoIsByID(clientID uint32) (string, error) {
+	if clientID == 0 {
+		return "", errors.New("client ID must not be zero when searching for client IP")
 	}
 
 	i.mu.Lock()
