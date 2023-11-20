@@ -47,6 +47,7 @@ const (
 	Responder MessageSubType = 2
 	Request   MessageSubType = 3
 	Reply     MessageSubType = 4
+	Reset     MessageSubType = 5
 )
 
 // Test SubTypes
@@ -82,6 +83,7 @@ var (
 		Handshake: {
 			Initiator: "initiator",
 			Responder: "responder",
+			Reset:     "handshake reset",
 		},
 		Keepalive: {
 			Request: "keepalive request",
