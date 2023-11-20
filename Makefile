@@ -35,6 +35,10 @@ server-mips:
 	GOOS=linux GOARCH=mipsle go build -ldflags '$(LDFLAGS)' -o ./bin/controller ./cmd/controller
 	scp ./bin/controller root@10.170.241.1:~
 
+peer-test:
+	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
+	scp ./bin/node yatesca@10.170.241.66:~
+
 #test:
 #	$(GOTEST) `go list ./... | grep -v tools | grep -v systray`
 

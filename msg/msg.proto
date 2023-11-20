@@ -53,7 +53,7 @@ message PunchNotification {
 }
 
 message PunchSubscribe {
-  string vpn_ip = 1;
+  uint32 id = 1;
 }
 
 

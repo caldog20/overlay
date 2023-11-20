@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+
+	node_id := flag.Uint("id", 0, "id for node - unique per node")
 	flag.Parse()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -22,6 +24,6 @@ func main() {
 		cancel()
 	}()
 
-	n := node.NewNode()
+	n := node.NewNode(uint32(*node_id))
 	n.Run(ctx)
 }

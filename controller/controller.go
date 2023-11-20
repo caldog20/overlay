@@ -64,26 +64,22 @@ func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*empt
 }
 
 func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.ControlService_PunchSubscriberServer) error {
+	if req.Id == 0 {
+		return errors.New("id must not be zero")
+	}
+
 	ctx := stream.Context()
 	p, _ := peer.FromContext(ctx)
 	remote := p.Addr.String()
-	log.Printf("remote: %s vpn ip %s subscribing to punch stream", remote, req.VpnIp)
+	log.Printf("remote: %s vpn ip %s subscribing to punch stream", remote, req.Id)
 
 	fin := make(chan bool)
-
-	var c *client
-	s.clients.Range(func(k, v interface{}) bool {
-		cl := v.(*client)
-		if cl.VpnIP == req.VpnIp {
-			c = cl
-			return false
-		}
-		return true
-	})
-
-	if c != nil {
-		c.PunchStream = stream
-		c.Finished = fin
+	var cl *client
+	c, found := s.clients.Load(req.Id)
+	if found {
+		cl = c.(*client)
+		cl.PunchStream = stream
+		cl.Finished = fin
 	} else {
 		return errors.New("error finding client requesting stream")
 	}
@@ -91,12 +87,12 @@ func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.Cont
 	for {
 		select {
 		case <-ctx.Done():
-			s.clients.Delete(c.Id)
-			s.ipman.DeallocateIP((c.VpnIP))
+			s.clients.Delete(cl.Id)
+			//s.ipman.DeallocateIP((c.VpnIP))
 			return nil
 		case <-fin:
-			s.clients.Delete(c.Id)
-			s.ipman.DeallocateIP((c.VpnIP))
+			s.clients.Delete(cl.Id)
+			//s.ipman.DeallocateIP((c.VpnIP))
 			return nil
 		}
 
@@ -135,6 +131,8 @@ func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) 
 
 	s.clients.Store(req.Id, newclient)
 
+	log.Printf("Registered Node - ID: %d - Remote: %s", newclient.Id, newclient.Remote)
+
 	return &msg.RegisterReply{
 		VpnIp: newclient.VpnIP,
 	}, nil
@@ -146,7 +144,7 @@ func (s *ControlServer) Deregister(ctx context.Context, req *msg.DeregisterReque
 	}
 
 	s.clients.Delete(req.Id)
-
+	log.Printf("Deregistered node ID: %d", req.Id)
 	return &emptypb.Empty{}, nil
 }
 
