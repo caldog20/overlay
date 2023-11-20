@@ -1,12 +1,12 @@
 package node
 
 import (
-	noiseimpl "github.com/caldog20/go-overlay/noise"
-	"github.com/flynn/noise"
 	"net"
 	"net/netip"
 	"sync"
 	"sync/atomic"
+
+	"github.com/flynn/noise"
 )
 
 const (
@@ -33,21 +33,18 @@ func (p *Peer) NewHandshake(initiator bool, keyPair noise.DHKey) error {
 	//p.mu.Lock()
 	//defer p.mu.Unlock()
 
-	var hs *noise.HandshakeState
 	var err error
 
 	if initiator {
-		hs, err = noiseimpl.NewInitiatorHS(keyPair, p.rs)
+		p.hs, err = NewInitiatorHS(keyPair, p.rs)
 	} else {
-		hs, err = noiseimpl.NewResponderHS(keyPair)
+		p.hs, err = NewResponderHS(keyPair)
 	}
 
 	if err != nil {
 		p.hs = nil
 		return err
 	}
-
-	p.hs = hs
 
 	return nil
 }

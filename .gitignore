@@ -23,6 +23,7 @@ go.work
 *test
 go-overlay
 bin/
+patches/
 
 # IDE Files
 .vscode/

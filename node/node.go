@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/caldog20/go-overlay/header"
 	"github.com/caldog20/go-overlay/msg"
-	noiseimpl "github.com/caldog20/go-overlay/noise"
 	"github.com/caldog20/go-overlay/tun"
 	"github.com/flynn/noise"
 	"google.golang.org/grpc"
@@ -36,7 +35,7 @@ func NewNode(id uint32) *Node {
 	if id == 0 {
 		log.Fatal("id must not be zero")
 	}
-	kp, _ := noiseimpl.TempCS.GenerateKeypair(rand.Reader)
+	kp, _ := TempCS.GenerateKeypair(rand.Reader)
 	pmap := NewPeerMap()
 
 	// Set up UDP Listen Socket
@@ -100,8 +99,10 @@ func (node *Node) Run(ctx context.Context) {
 	}
 
 	go node.puncher()
-	go node.ListenUDP(ctx)
-	go node.handleOutbound()
+	for i := 0; i < 2; i++ {
+		go node.ListenUDP(ctx)
+		go node.handleOutbound()
+	}
 
 	<-ctx.Done()
 	node.api.Deregister(context.TODO(), &msg.DeregisterRequest{
@@ -181,7 +182,7 @@ func (node *Node) DoDecrypt(peer *Peer, in []byte, fwpacket *FWPacket, counter u
 		return fmt.Errorf("error decrypting packet from peer id: %d - %v\n", peer.remoteID, err)
 	}
 
-	log.Println("Decrypted Data packet")
+	//log.Println("Decrypted Data packet")
 	// Decrypted packet, check inner packet
 	fwpacket, err = node.fw.Parse(data, true)
 	if err != nil {
@@ -562,7 +563,8 @@ func (node *Node) handleOutbound() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("Wrote %d bytes to peer %s", n, peer.remote.String())
+
+			//log.Printf("Wrote %d bytes to peer %s", n, peer.remote.String())
 			peer.mu.Unlock()
 			continue
 		}
@@ -611,53 +613,6 @@ func (node *Node) handleOutbound() {
 		continue
 
 	}
-
-	//// preset peer here since we are testing and know what peer we want to send to
-	//
-	//p := node.peermap.Contains(netip.MustParseAddr("192.168.1.1"))
-	//if p == nil {
-	//	log.Fatal("cant find predetermined peer")
-	//}
-	//
-	//p.NewHandshake(true, node.keyPair)
-	//
-	//out, _ = h.Encode(out, header.Handshake, header.Initiator, p.localID, 1)
-	//log.Println("writing first handshake message")
-	//
-	//out, _, _, err = p.hs.WriteMessage(out, nil)
-	//if err != nil {
-	//	log.Printf("error writing handshake initiating message: %v", err)
-	//	return
-	//}
-	//
-	//n, _ := node.conn.WriteToUDP(out, p.remote)
-	//
-	//n, err = node.conn.Read(in)
-	//h.Parse(in[:n])
-	//
-	//if h.Type == header.Handshake && h.SubType == header.Responder {
-	//	_, tx, rx, err := p.hs.ReadMessage(nil, in[header.Len:n])
-	//	if err != nil {
-	//		log.Printf("error reading handshake response: %v", err)
-	//		return
-	//	}
-	//	p.tx = tx
-	//	p.rx = rx
-	//	p.ready = true
-	//	p.remoteID = h.ID
-	//	node.peermap.AddPeerWithIndices(p)
-	//}
-	//
-	//out, _ = h.Encode(out, header.Data, header.None, p.localID, 3)
-	//t := []byte("Encrypted Channel Working!!!")
-	//out, err = p.tx.Encrypt(out, nil, t)
-	//if err != nil {
-	//	log.Printf("error encrypting regular data packet: %v", err)
-	//	return
-	//}
-	//
-	//n, _ = node.conn.WriteToUDP(out, p.remote)
-	//log.Printf("wrote %d bytes to %s", n, p.remote.String())
 }
 
 func (node *Node) puncher() {
