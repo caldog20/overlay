@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -18,6 +17,7 @@ import (
 )
 
 type client struct {
+	DeviceKey   string
 	Id          uint32
 	Key         string
 	Hostname    string
@@ -238,7 +238,6 @@ func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListReque
 }
 
 func RunController(ctx context.Context) {
-	runtime.LockOSThread()
 
 	lis, err := net.Listen("tcp4", ":5555")
 	if err != nil {
