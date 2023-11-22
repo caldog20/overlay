@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/caldog20/go-overlay/node"
 	"log"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/caldog20/go-overlay/node"
 )
 
 func main() {
-
+	//f, _ := os.Create("profile.prof")
+	//pprof.StartCPUProfile(f)
 	node_id := flag.Uint("id", 0, "id for node - unique per node")
 	flag.Parse()
 
@@ -24,6 +25,11 @@ func main() {
 		cancel()
 	}()
 
+	//go func() {
+	//	log.Println(http.ListenAndServe("localhost:6060", nil))
+	//}()
+
 	n := node.NewNode(uint32(*node_id))
 	n.Run(ctx)
+	//pprof.StopCPUProfile()
 }

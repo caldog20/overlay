@@ -120,12 +120,12 @@ func (fw *Firewall) Drop(fwpacket *FWPacket) bool {
 	// For now, the firewall only checks to make sure packets come from the nebula vpn subnet
 	if fwpacket.inbound {
 		fw.inboundMetrics.packets.Inc(1)
-		if fwpacket.RemoteIP.To4()[0] != 192 {
+		if fwpacket.RemoteIP.To4()[0] != 100 {
 			fw.inboundMetrics.dropped.Inc(1)
 			//log.Printf("[firewall.inbound.drop] packet not sourced from vpn ip - src %v", fwpacket.RemoteIP.String())
 			return true
 		}
-		if fwpacket.LocalIP.To4()[0] != 192 {
+		if fwpacket.LocalIP.To4()[0] != 100 {
 			fw.inboundMetrics.dropped.Inc(1)
 			//log.Printf("[firewall.inbound.drop] packet not destined to vpn ip - dst %v", fwpacket.LocalIP.String())
 			return true
@@ -133,12 +133,12 @@ func (fw *Firewall) Drop(fwpacket *FWPacket) bool {
 		fw.inboundMetrics.allowed.Inc(1)
 	} else {
 		fw.outboundMetrics.packets.Inc(1)
-		if fwpacket.LocalIP.To4()[0] != 192 {
+		if fwpacket.LocalIP.To4()[0] != 100 {
 			fw.outboundMetrics.dropped.Inc(1)
 			//log.Printf("[firewall.outbound.drop] packet not sourced from vpn ip - src %v", fwpacket.LocalIP.String())
 			return true
 		}
-		if fwpacket.RemoteIP.To4()[0] != 192 {
+		if fwpacket.RemoteIP.To4()[0] != 100 {
 			fw.outboundMetrics.dropped.Inc(1)
 			//log.Printf("[firewall.outbound.drop] packet not destined to vpn ip - dst %v", fwpacket.RemoteIP.String())
 			return true

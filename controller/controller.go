@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -71,7 +70,7 @@ func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.Cont
 	ctx := stream.Context()
 	p, _ := peer.FromContext(ctx)
 	remote := p.Addr.String()
-	log.Printf("remote: %s vpn ip %s subscribing to punch stream", remote, req.Id)
+	log.Printf("remote: %s ID %d subscribing to punch stream", remote, req.Id)
 
 	fin := make(chan bool)
 	var cl *client
@@ -238,14 +237,12 @@ func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListReque
 }
 
 func RunController(ctx context.Context) {
-	runtime.LockOSThread()
-
 	lis, err := net.Listen("tcp4", ":5555")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	i, err := ipam.NewIpam("192.168.77.0/24")
+	i, err := ipam.NewIpam("100.65.0.0/24")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -272,6 +269,7 @@ func RunController(ctx context.Context) {
 	if err != nil {
 		log.Fatalf("grpc serve error: %v", err)
 	}
+
 	wg.Wait()
 	log.Println("controller shutting down")
 }

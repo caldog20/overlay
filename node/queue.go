@@ -1,6 +1,11 @@
 package node
 
-import "sync"
+import (
+	"container/list"
+	"sync"
+	"sync/atomic"
+	"time"
+)
 
 type Queue struct {
 	items [][]byte
@@ -41,4 +46,71 @@ func (q *Queue) IsEmpty() bool {
 
 func (q *Queue) Len() int {
 	return len(q.items)
+}
+
+type Buffer struct {
+	t time.Time
+	b []byte
+}
+
+func NewBuffer() []byte {
+	return make([]byte, 1400)
+}
+
+type BufferAllocator struct {
+	pool       *list.List
+	getBuffer  chan []byte
+	giveBuffer chan []byte
+	counter    atomic.Uint32
+}
+
+func NewBufferAllocator() *BufferAllocator {
+	ba := &BufferAllocator{
+		pool:       new(list.List),
+		getBuffer:  make(chan []byte),
+		giveBuffer: make(chan []byte),
+		counter:    atomic.Uint32{},
+	}
+
+	return ba
+}
+
+func (ba *BufferAllocator) RunBufferAllocator() {
+	for {
+		if ba.pool.Len() == 0 {
+			ba.pool.PushFront(Buffer{t: time.Now(), b: make([]byte, 1400)})
+		}
+
+		e := ba.pool.Front()
+
+		timeout := time.NewTimer(time.Minute * 5)
+
+		select {
+		case b := <-ba.giveBuffer:
+			timeout.Stop()
+			ba.pool.PushFront(Buffer{t: time.Now(), b: b})
+		case ba.getBuffer <- e.Value.(Buffer).b:
+			timeout.Stop()
+			ba.pool.Remove(e)
+		case <-timeout.C:
+			e := ba.pool.Front()
+			for e != nil {
+				n := e.Next()
+				if time.Since(e.Value.(Buffer).t) > time.Minute*5 {
+					ba.pool.Remove(e)
+					e.Value = nil
+				}
+				e = n
+			}
+		}
+	}
+}
+
+func (ba *BufferAllocator) GetBuffer() []byte {
+	return <-ba.getBuffer
+}
+
+func (ba *BufferAllocator) GiveBuffer(b []byte) {
+	ba.giveBuffer <- b
+	return
 }
