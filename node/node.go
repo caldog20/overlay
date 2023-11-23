@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"net/netip"
-	"strconv"
 	"strings"
 
 	"github.com/caldog20/go-overlay/header"
@@ -57,12 +56,12 @@ func NewNode(id uint32) *Node {
 
 	c := NewConn(0)
 	n.conns[0] = c
-	port := c.GetLocalAddr().String()
-	portint, _ := strconv.Atoi(strings.Split(port, ":")[1])
-	for i := 1; i < 2; i++ {
-		c := NewConn(uint16(portint))
-		n.conns[i] = c
-	}
+	//port := c.GetLocalAddr().String()
+	//portint, _ := strconv.Atoi(strings.Split(port, ":")[1])
+	//for i := 1; i < 2; i++ {
+	//	c := NewConn(uint16(portint))
+	//	n.conns[i] = c
+	//}
 
 	return n
 }
@@ -114,6 +113,14 @@ func (node *Node) Run(ctx context.Context) {
 	//})
 }
 
+func (node *Node) RunPeer(peer *Peer) {
+	out := make([]byte, 1400)
+	for peer.ready.Load() {
+		in := <-peer.inqueue
+		out, err := node.DoDecrypt(peer, in, out)
+	}
+}
+
 func (node *Node) ReadUDP(raddr *net.UDPAddr, in []byte, out []byte, h *header.Header, fwpacket *FWPacket, index int) {
 	err := h.Parse(in)
 	if err != nil {
@@ -135,31 +142,31 @@ func (node *Node) ReadUDP(raddr *net.UDPAddr, in []byte, out []byte, h *header.H
 			log.Println("received data message for unknown peer")
 			return
 		}
-		peer.mu.Lock()
+		//peer.mu.Lock()
 		// we have valid peer ready for data
 		if peer.ready.Load() {
-			out, err = node.DoDecrypt(peer, in[header.Len:], out[:0], h.MsgCounter)
-			if err != nil {
-				log.Println(err)
-				peer.mu.Unlock()
-				return
-			}
-			peer.mu.Unlock()
-
-			fwpacket, err = node.fw.Parse(out, true)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			drop := node.fw.Drop(fwpacket)
-			if !drop {
-				_, err = node.tun.Write(out)
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-
+			//out, err = node.DoDecrypt(peer, in[header.Len:], out[:0], h.MsgCounter)
+			//if err != nil {
+			//	log.Println(err)
+			//	peer.mu.Unlock()
+			//	return
+			//}
+			//peer.mu.Unlock()
+			//
+			//fwpacket, err = node.fw.Parse(out, true)
+			//if err != nil {
+			//	log.Println(err)
+			//	return
+			//}
+			//
+			//drop := node.fw.Drop(fwpacket)
+			//if !drop {
+			//	_, err = node.tun.Write(out)
+			//	if err != nil {
+			//		log.Fatal(err)
+			//	}
+			//}
+			peer.inqueue <- in
 		}
 		// if peer not ready, drop since this is not a handshake message
 		return
@@ -217,7 +224,10 @@ func (node *Node) ReadUDP(raddr *net.UDPAddr, in []byte, out []byte, h *header.H
 				peer.state = HandShakeRespSent
 				peer.remote = raddr // Update remote endpoint
 				peer.ready.Store(true)
+				peer.inqueue = make(chan []byte, 10)
+				peer.outqueue = make(chan []byte, 10)
 				peer.mu.Unlock()
+				go node.RunPeer(peer)
 				return
 			}
 			// We already sent handshake response but getting another handshake init message
@@ -296,6 +306,8 @@ func (node *Node) QueryNewPeerID(remoteID uint32) (*Peer, error) {
 		remoteID: reply.Id,
 		vpnip:    netip.MustParseAddr(reply.VpnIp),
 		state:    HandshakeNotStarted,
+		inqueue:  make(chan []byte, 10),
+		outqueue: make(chan []byte, 10),
 	}
 
 	peer.remote, _ = net.ResolveUDPAddr("udp4", reply.Remote)

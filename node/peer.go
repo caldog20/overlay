@@ -29,6 +29,9 @@ type Peer struct {
 	tx       *noise.CipherState
 	rs       []byte
 	state    int
+
+	inqueue  chan []byte
+	outqueue chan []byte
 }
 
 func (p *Peer) NewHandshake(initiator bool, keyPair noise.DHKey) error {

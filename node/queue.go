@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+var buffers = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 1404)
+	},
+}
+
+func GetBuffer() []byte {
+	return buffers.Get().([]byte)
+}
+
+func PutBuffer(buf []byte) {
+	//buf = buf[:0]
+	buffers.Put(buf)
+}
+
 type Queue struct {
 	items [][]byte
 	mu    sync.Mutex
