@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"github.com/caldog20/go-overlay/header"
 	"github.com/rcrowley/go-metrics"
 	"github.com/songgao/water"
 	"log"
@@ -33,21 +32,20 @@ func NewTun() (*Tun, error) {
 	return tun, nil
 }
 
-type tuncallback func(in []byte, out []byte, h *header.Header, fwpacket *FWPacket, index int)
+type tuncallback func(elem *Buffer, index int)
 
-func (t *Tun) ReadTunPackets(callback tuncallback, index int) {
-	in := make([]byte, 1400)
-	out := make([]byte, 1400)
-	h := &header.Header{}
-	fwpacket := &FWPacket{}
+func (t *Tun) ReadPackets(callback tuncallback, index int) {
 	for {
-		n, err := t.Read(in)
+		elem := GetBuffer()
+		n, err := t.Read(elem.in)
 		if err != nil {
 			log.Println(err)
 			t.Close()
+			PutBuffer(elem)
 			return
 		}
-		callback(in[:n], out, h, fwpacket, index)
+		elem.size = n
+		callback(elem, index)
 	}
 }
 

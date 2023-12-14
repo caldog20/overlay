@@ -4,21 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
-	"log"
-	"net"
-	"net/netip"
-	"strings"
-
 	"github.com/caldog20/go-overlay/header"
 	"github.com/caldog20/go-overlay/msg"
 	"github.com/flynn/noise"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"log"
+	"net"
+	"net/netip"
+	"strings"
+	"sync"
 )
 
 type Node struct {
-	//conn    *Conn
+	mu      sync.RWMutex
 	conns   []*Conn
 	peermap *PeerMap
 	keyPair noise.DHKey
@@ -27,14 +26,14 @@ type Node struct {
 	gconn   *grpc.ClientConn
 	tun     *Tun
 	fw      *Firewall
-	pchan   chan string
 	localID uint32
 }
 
-func NewNode(id uint32) *Node {
+func NewNode(id uint32, port uint16) *Node {
 	if id == 0 {
 		log.Fatal("id must not be zero")
 	}
+
 	kp, _ := TempCS.GenerateKeypair(rand.Reader)
 	pmap := NewPeerMap()
 
@@ -44,17 +43,15 @@ func NewNode(id uint32) *Node {
 	}
 
 	n := &Node{
-		//conn:    NewConn(55555),
 		conns:   make([]*Conn, 4),
 		peermap: pmap,
 		keyPair: kp,
 		tun:     t,
 		fw:      NewFirewall(),
-		pchan:   make(chan string),
 		localID: id,
 	}
 
-	c := NewConn(0)
+	c := NewConn(port)
 	n.conns[0] = c
 	//port := c.GetLocalAddr().String()
 	//portint, _ := strconv.Atoi(strings.Split(port, ":")[1])
@@ -100,10 +97,10 @@ func (node *Node) Run(ctx context.Context) {
 	//go node.puncher()
 	//go node.ListenUDP(ctx)
 
-	for i := 0; i < 2; i++ {
-		go node.conns[i].ReadPackets(node.ReadUDP, i)
-		go node.tun.ReadTunPackets(node.handleOutbound, i)
-	}
+	//for i := 0; i < 2; i++ {
+	go node.conns[0].ReadPackets(node.ReadUDP, 0)
+	go node.tun.ReadPackets(node.handleOutbound, 0)
+	//}
 
 	//go node.conn.ReadPackets(node.ReadUDP, 0)
 
@@ -113,30 +110,22 @@ func (node *Node) Run(ctx context.Context) {
 	//})
 }
 
-func (node *Node) RunPeer(peer *Peer) {
-	out := make([]byte, 1400)
-	for peer.ready.Load() {
-		in := <-peer.inqueue
-		out, err := node.DoDecrypt(peer, in, out)
-	}
-}
-
-func (node *Node) ReadUDP(raddr *net.UDPAddr, in []byte, out []byte, h *header.Header, fwpacket *FWPacket, index int) {
-	err := h.Parse(in)
+func (node *Node) ReadUDP(elem *Buffer, index int) {
+	err := elem.h.Parse(elem.in)
 	if err != nil {
 		log.Printf("error parsing header: %v", err)
 		return
 	}
 
 	// Ignore Punch Packets
-	if h.Type == header.Punch {
+	if elem.h.Type == header.Punch {
 		return
 	}
 
 	// Fast path, we have peer and this is a data message. try to process
-	if h.Type == header.Data {
+	if elem.h.Type == header.Data {
 		node.peermap.mu.RLock()
-		peer, found := node.peermap.peerID[h.ID]
+		peer, found := node.peermap.peerID[elem.h.ID]
 		node.peermap.mu.RUnlock()
 		if !found {
 			log.Println("received data message for unknown peer")
@@ -145,220 +134,49 @@ func (node *Node) ReadUDP(raddr *net.UDPAddr, in []byte, out []byte, h *header.H
 		//peer.mu.Lock()
 		// we have valid peer ready for data
 		if peer.ready.Load() {
-			//out, err = node.DoDecrypt(peer, in[header.Len:], out[:0], h.MsgCounter)
-			//if err != nil {
-			//	log.Println(err)
-			//	peer.mu.Unlock()
-			//	return
-			//}
-			//peer.mu.Unlock()
-			//
-			//fwpacket, err = node.fw.Parse(out, true)
-			//if err != nil {
-			//	log.Println(err)
-			//	return
-			//}
-			//
-			//drop := node.fw.Drop(fwpacket)
-			//if !drop {
-			//	_, err = node.tun.Write(out)
-			//	if err != nil {
-			//		log.Fatal(err)
-			//	}
-			//}
-			peer.inqueue <- in
+			peer.inqueue <- elem
 		}
 		// if peer not ready, drop since this is not a handshake message
 		return
 	}
 
 	// Handle if this is a handshake message
-	if h.Type == header.Handshake {
+	if elem.h.Type == header.Handshake {
 		node.peermap.mu.RLock()
-		peer, found := node.peermap.peerID[h.ID]
+		peer, found := node.peermap.peerID[elem.h.ID]
 		node.peermap.mu.RUnlock()
 
 		if !found {
-			peer, err = node.QueryNewPeerID(h.ID)
+			peer, err = node.QueryNewPeerID(elem.h.ID)
 			if err != nil {
 				log.Println(err)
 				return
 			}
 		}
-
-		// check peer handshake state, lock peer
-		peer.mu.Lock()
-
-		// handshake init msg received
-		if h.SubType == header.Initiator {
-			// peer waiting for handshake message, process it
-			if peer.state == HandshakeNotStarted {
-				peer.ready.Store(false)
-				// create a new handshake and process
-				err := peer.NewHandshake(false, node.keyPair)
-				if err != nil {
-					log.Printf("error creating new handshake state for peer: %d - %v\n", peer.remoteID, err)
-					peer.mu.Unlock()
-					return
-				}
-				_, _, _, err = peer.hs.ReadMessage(nil, in[header.Len:])
-				if err != nil {
-					log.Printf("error reading first handshake message: %v", err)
-					peer.mu.Unlock()
-					return
-				}
-
-				// Respond to handshake
-				out, _ = h.Encode(out, header.Handshake, header.Responder, node.localID, 2)
-				out, peer.rx, peer.tx, err = peer.hs.WriteMessage(out, nil)
-				if err != nil {
-					log.Printf("error writing handshake response: %v", err)
-					peer.mu.Unlock()
-					return
-				}
-
-				_, err = node.conns[index].uc.WriteToUDP(out, peer.remote)
-				if err != nil {
-					log.Fatal(err)
-				}
-				peer.state = HandShakeRespSent
-				peer.remote = raddr // Update remote endpoint
-				peer.ready.Store(true)
-				peer.inqueue = make(chan []byte, 10)
-				peer.outqueue = make(chan []byte, 10)
-				peer.mu.Unlock()
-				go node.RunPeer(peer)
-				return
-			}
-			// We already sent handshake response but getting another handshake init message
-			if peer.state == HandShakeRespSent {
-				peer.ready.Store(false)
-				peer.state = 0
-				peer.hs = nil
-				peer.rx = nil
-				peer.tx = nil
-				log.Printf("receieved another handshake init for already handshaked peer: %d - resetting peer state", peer.remoteID)
-				peer.mu.Unlock()
-				return
-			}
+		peer.handshakes <- elem
+		if peer.status.Load() == 0 {
+			log.Println("Starting peer")
+			go peer.Start(false)
 		}
 
-		// Handshake final response, process
-		if h.SubType == header.Responder {
-			if peer.state == HandshakeInitSent {
-				_, peer.tx, peer.rx, err = peer.hs.ReadMessage(nil, in[header.Len:])
-				if err != nil {
-					log.Printf("error reading handshake response: %v - resetting peer state", err)
-					peer.ready.Store(false)
-					peer.state = HandshakeNotStarted
-					peer.hs = nil
-					peer.rx = nil
-					peer.tx = nil
-					peer.mu.Unlock()
-					return
-				}
-				peer.state = HandshakeDone
-				peer.remote = raddr
-				peer.ready.Store(true)
-				peer.mu.Unlock()
-				return
-			}
-		}
-	} else {
-		log.Printf("invalid message type: %s remote: %s", h.TypeName(), raddr.String())
 	}
-
 }
 
-func (node *Node) QueryNewPeerIP(remoteIP netip.Addr) (*Peer, error) {
-	reply, err := node.api.WhoIsIp(context.TODO(), &msg.WhoIsIPRequest{VpnIp: remoteIP.String()})
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	peer := &Peer{
-		remoteID: reply.Id,
-		vpnip:    netip.MustParseAddr(reply.VpnIp),
-		state:    HandshakeNotStarted,
-	}
-
-	peer.remote, _ = net.ResolveUDPAddr("udp4", reply.Remote)
-	peer.rs, _ = base64.StdEncoding.DecodeString(reply.Key)
-
-	node.peermap.mu.Lock()
-	defer node.peermap.mu.Unlock()
-
-	node.peermap.peerIP[peer.vpnip] = peer
-	node.peermap.peerID[peer.remoteID] = peer
-
-	return peer, nil
-	//if err != nil {
-	//	log.Println("error adding peer to peermap")
-	//}
-}
-
-func (node *Node) QueryNewPeerID(remoteID uint32) (*Peer, error) {
-	reply, err := node.api.WhoIsID(context.TODO(), &msg.WhoIsIDRequest{Id: remoteID})
-	if err != nil {
-		return nil, err
-	}
-	peer := &Peer{
-		remoteID: reply.Id,
-		vpnip:    netip.MustParseAddr(reply.VpnIp),
-		state:    HandshakeNotStarted,
-		inqueue:  make(chan []byte, 10),
-		outqueue: make(chan []byte, 10),
-	}
-
-	peer.remote, _ = net.ResolveUDPAddr("udp4", reply.Remote)
-	peer.rs, err = base64.StdEncoding.DecodeString(reply.Key)
-	if err != nil {
-		return nil, errors.New("error decoding peer key")
-	}
-	node.peermap.mu.Lock()
-	defer node.peermap.mu.Unlock()
-
-	node.peermap.peerIP[peer.vpnip] = peer
-	node.peermap.peerID[peer.remoteID] = peer
-
-	return peer, nil
-	//if err != nil {
-	//	log.Println("error adding peer to peermap")
-	//}
-}
-
-func (node *Node) DoDecrypt(peer *Peer, in []byte, out []byte, counter uint64) ([]byte, error) {
-	var err error
-	out, err = peer.DoDecrypt(out, in, counter)
-	return out, err
-}
-
-func (node *Node) DoEncrypt(peer *Peer, out []byte, in []byte, h *header.Header) ([]byte, error) {
-	var err error
-	//peer.mu.Lock()
-	out, err = h.Encode(out, header.Data, header.None, node.localID, peer.tx.Nonce())
-	//peer.mu.Unlock()
-	out, err = peer.DoEncrypt(out, in)
-	if err != nil {
-		log.Println(err)
-	}
-	return out, err
-}
-
-func (node *Node) handleOutbound(in []byte, out []byte, h *header.Header, fwpacket *FWPacket, index int) {
+func (node *Node) handleOutbound(elem *Buffer, index int) {
 	// Parse outbound packet with firewall
 	var err error
-	fwpacket, err = node.fw.Parse(in, false)
-
-	if drop := node.fw.Drop(fwpacket); drop {
-		return
-	}
+	fwpacket, err := node.fw.Parse(elem.in, false)
 
 	// TODO: Maybe let firewall handle this case for mac, linux kernel handles this for us
 	tempIP := net.ParseIP(node.vpnip.String())
 	if tempIP.Equal(fwpacket.RemoteIP) {
 		// Packet destination IP matches local tunnel IP
 		// drop packets
+		return
+	}
+
+	// TODO: Move this properly checking node ip
+	if drop := node.fw.Drop(fwpacket); drop {
 		return
 	}
 
@@ -378,63 +196,61 @@ func (node *Node) handleOutbound(in []byte, out []byte, h *header.Header, fwpack
 		}
 	}
 
-	peer.mu.Lock()
+	//peer.mu.Lock()
 	// Peer was found, and is ready, send data
 	if peer.ready.Load() {
-		out, err = node.DoEncrypt(peer, out, in, h)
-		_, err = node.conns[index].uc.WriteToUDP(out, peer.Remote())
-		if err != nil {
-			log.Fatal(err)
-		}
-		peer.mu.Unlock()
-		//log.Printf("Wrote %d bytes to peer %s", n, peer.remote.String())
+		peer.outqueue <- elem
 		return
 	}
 
-	// If we get here, peer was found but not ready, check state and start handshake possibly
-	//peer.mu.Lock()
-
-	if peer.state == HandshakeInitSent {
-		log.Printf("already sent handshake - waiting for response for peer %d", peer.remoteID)
-		peer.mu.Unlock()
-		return
+	// Pending outbound packets
+	peer.pending <- elem
+	if peer.status.Load() == 0 {
+		log.Println("Starting peer")
+		go peer.Start(true)
 	}
 
-	// Punch
-	//_, err = node.api.Punch(context.TODO(), &msg.PunchRequest{SrcVpnIp: node.vpnip.String(), DstVpnIp: peer.vpnip.String()})
-	//if err != nil {
-	//	log.Printf("error requesting punch before handshake: %v", err)
+	//if peer.state == HandshakeInitSent {
+	//	log.Printf("already sent handshake - waiting for response for peer %d", peer.remoteID)
+	//	peer.mu.Unlock()
+	//	return
 	//}
-
-	err = peer.NewHandshake(true, node.keyPair)
-	if err != nil {
-		log.Fatal(err)
-	}
-	out, _ = h.Encode(out, header.Handshake, header.Initiator, node.localID, 1)
-	out, _, _, err = peer.hs.WriteMessage(out, nil)
-	if err != nil {
-		log.Printf("error writing handshake initiating message: %v", err)
-		peer.ready.Store(false)
-		peer.state = HandshakeNotStarted
-		peer.hs = nil
-		peer.rx = nil
-		peer.tx = nil
-		peer.mu.Unlock()
-		return
-	}
-
-	_, err = node.conns[index].uc.WriteToUDP(out, peer.remote)
-	if err != nil {
-		peer.ready.Store(false)
-		peer.state = HandshakeNotStarted
-		peer.hs = nil
-		peer.rx = nil
-		peer.tx = nil
-		peer.mu.Unlock()
-		return
-	}
-	peer.state = HandshakeInitSent
-	peer.mu.Unlock()
+	//
+	//// Punch
+	////_, err = node.api.Punch(context.TODO(), &msg.PunchRequest{SrcVpnIp: node.vpnip.String(), DstVpnIp: peer.vpnip.String()})
+	////if err != nil {
+	////	log.Printf("error requesting punch before handshake: %v", err)
+	////}
+	//
+	//err = peer.NewHandshake(true, node.keyPair)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//out, _ = h.Encode(out, header.Handshake, header.Initiator, node.localID, 1)
+	//out, _, _, err = peer.hs.WriteMessage(out, nil)
+	//if err != nil {
+	//	log.Printf("error writing handshake initiating message: %v", err)
+	//	peer.ready.Store(false)
+	//	peer.state = HandshakeNotStarted
+	//	peer.hs = nil
+	//	peer.rx = nil
+	//	peer.tx = nil
+	//	peer.mu.Unlock()
+	//	return
+	//}
+	//
+	//_, err = node.conns[index].uc.WriteToUDP(out, peer.remote)
+	//if err != nil {
+	//	peer.ready.Store(false)
+	//	peer.state = HandshakeNotStarted
+	//	peer.hs = nil
+	//	peer.rx = nil
+	//	peer.tx = nil
+	//	peer.mu.Unlock()
+	//	return
+	//}
+	//peer.state = HandshakeInitSent
+	//peer.mu.Unlock()
 	return
 }
 

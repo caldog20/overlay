@@ -16,6 +16,8 @@ const (
 	ProtocolICMP = 1
 )
 
+// TODO: Change firewall to use netip.Addr
+
 type FWPacket struct {
 	Src      net.IP
 	Dst      net.IP

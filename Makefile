@@ -38,7 +38,12 @@ server-mips:
 peer-test:
 	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
 	scp ./bin/node yatesca@10.170.241.66:~
+	ssh yatesca@10.170.241.66 -t 'sudo ~/node -id 100'
 
+peer-test2:
+	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
+	scp ./bin/node yatesca@10.170.241.11:~
+	ssh yatesca@10.170.241.11 -t 'sudo ~/node -id 200'
 #test:
 #	$(GOTEST) `go list ./... | grep -v tools | grep -v systray`
 

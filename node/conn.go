@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"github.com/caldog20/go-overlay/header"
 	"golang.org/x/sys/unix"
 	"log"
 	"net"
@@ -13,6 +12,8 @@ import (
 const (
 	Net = "udp4"
 )
+
+// Maybe make interface or add more methods for functionality
 
 type Conn struct {
 	uc *net.UDPConn
@@ -49,22 +50,21 @@ func NewConn(port uint16) *Conn {
 	return conn
 }
 
-type udpcallback func(raddr *net.UDPAddr, in []byte, out []byte, h *header.Header, fwpacket *FWPacket, index int)
+type udpcallback func(elem *Buffer, index int)
 
 func (conn *Conn) ReadPackets(callback udpcallback, index int) {
-	h := &header.Header{}
-	fwpacket := &FWPacket{}
-	in := make([]byte, 1400)
-	out := make([]byte, 1400)
-
 	for {
-		n, raddr, err := conn.uc.ReadFromUDP(in)
+		elem := GetBuffer()
+		n, raddr, err := conn.uc.ReadFromUDP(elem.in)
 		if err != nil {
 			log.Println(err)
+			PutBuffer(elem)
 			conn.uc.Close()
 			return
 		}
-		callback(raddr, in[:n], out, h, fwpacket, index)
+		elem.size = n
+		elem.raddr = raddr
+		callback(elem, index)
 	}
 }
 

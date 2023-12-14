@@ -15,7 +15,7 @@ type IP struct {
 }
 
 type Ipam struct {
-	mu     sync.Mutex
+	mu     sync.RWMutex
 	pool   map[string]IP
 	prefix netip.Prefix
 }
@@ -43,9 +43,9 @@ func (i *Ipam) SetPrefix(p string) error {
 
 	// Pre-reserve network and bcast address
 	i.mu.Lock()
+	defer i.mu.Unlock()
 	i.pool[i.prefix.Addr().String()] = IP{}
 	i.pool[netipx.PrefixLastIP(i.prefix).String()] = IP{}
-	i.mu.Unlock()
 
 	return nil
 }
@@ -97,8 +97,8 @@ func (i *Ipam) WhoIsByIP(clientIP string) (uint32, error) {
 		return 0, errors.New("client IP must not be nil when searching for client ID")
 	}
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.mu.RLock()
+	defer i.mu.RUnlock()
 
 	ip, found := i.pool[clientIP]
 	if found {
@@ -112,8 +112,8 @@ func (i *Ipam) WhoIsByID(clientID uint32) (string, error) {
 		return "", errors.New("client ID must not be zero when searching for client IP")
 	}
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.mu.RLock()
+	defer i.mu.RUnlock()
 
 	for k, v := range i.pool {
 		if v.clientID == clientID {
