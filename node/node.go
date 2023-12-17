@@ -1,19 +1,22 @@
 package node
 
+// test
 import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"github.com/caldog20/go-overlay/header"
-	"github.com/caldog20/go-overlay/msg"
-	"github.com/flynn/noise"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net"
 	"net/netip"
 	"strings"
 	"sync"
+
+	"github.com/flynn/noise"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/caldog20/go-overlay/header"
+	"github.com/caldog20/go-overlay/msg"
 )
 
 type Node struct {
@@ -81,7 +84,6 @@ func (node *Node) Run(ctx context.Context) {
 		Key:  base64.StdEncoding.EncodeToString(node.keyPair.Public),
 		Port: lport,
 	})
-
 	if err != nil {
 		log.Fatalf("Error registering with controller: %v", err)
 	}
@@ -94,15 +96,15 @@ func (node *Node) Run(ctx context.Context) {
 		log.Fatal(err)
 	}
 
-	//go node.puncher()
-	//go node.ListenUDP(ctx)
+	// go node.puncher()
+	// go node.ListenUDP(ctx)
 
-	//for i := 0; i < 2; i++ {
+	// for i := 0; i < 2; i++ {
 	go node.conns[0].ReadPackets(node.ReadUDP, 0)
 	go node.tun.ReadPackets(node.handleOutbound, 0)
 	//}
 
-	//go node.conn.ReadPackets(node.ReadUDP, 0)
+	// go node.conn.ReadPackets(node.ReadUDP, 0)
 
 	<-ctx.Done()
 	//node.api.Deregister(context.TODO(), &msg.DeregisterRequest{
@@ -131,7 +133,7 @@ func (node *Node) ReadUDP(elem *Buffer, index int) {
 			log.Println("received data message for unknown peer")
 			return
 		}
-		//peer.mu.Lock()
+		// peer.mu.Lock()
 		// we have valid peer ready for data
 		if peer.ready.Load() {
 			peer.inqueue <- elem
@@ -196,7 +198,7 @@ func (node *Node) handleOutbound(elem *Buffer, index int) {
 		}
 	}
 
-	//peer.mu.Lock()
+	// peer.mu.Lock()
 	// Peer was found, and is ready, send data
 	if peer.ready.Load() {
 		peer.outqueue <- elem
@@ -290,5 +292,4 @@ func (node *Node) puncher() {
 
 		log.Printf("sent 5 punch packets to %s - %d bytes", req.Remote, b)
 	}
-
 }

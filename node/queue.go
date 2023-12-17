@@ -18,15 +18,15 @@ type Buffer struct {
 
 var buffers = sync.Pool{
 	New: func() interface{} {
-		element := &Buffer{
+		buffer := &Buffer{
 			in:       make([]byte, 1400),
 			data:     make([]byte, 1400),
 			h:        new(header.Header),
 			raddr:    nil,
-			fwpacket: &FWPacket{},
+			fwpacket: new(FWPacket),
 			peer:     nil,
 		}
-		return element
+		return buffer
 	},
 }
 
@@ -34,13 +34,13 @@ func GetBuffer() *Buffer {
 	return buffers.Get().(*Buffer)
 }
 
-func PutBuffer(e *Buffer) {
+func PutBuffer(buffer *Buffer) {
 	//buf = buf[:0]
-	e.size = 0
-	e.peer = nil
-	clear(e.in)
-	clear(e.data)
-	buffers.Put(e)
+	buffer.size = 0
+	buffer.peer = nil
+	clear(buffer.in)
+	clear(buffer.data)
+	buffers.Put(buffer)
 }
 
 //type Queue struct {
