@@ -48,8 +48,9 @@ peer-test2:
 #	$(GOTEST) `go list ./... | grep -v tools | grep -v systray`
 
 protogen:
-	echo "Generating protobuf and grpc code"
-	@protoc --proto_path=msg --go_out=msg --go_opt=paths=source_relative --go-grpc_out=msg --go-grpc_opt=paths=source_relative msg/*.proto
+	echo "Generating protobuf and twirp code"
+	#@protoc --proto_path=msg --go_out=msg --go_opt=paths=source_relative --go-grpc_out=msg --go-grpc_opt=paths=source_relative msg/*.proto
+	@protoc --proto_path=proto --go_out=proto --go_opt=paths=source_relative --twirp_out=proto  --twirp_opt=paths=source_relative proto/control.proto
 
 fmt:
 	@echo "gofmt (simplify)"

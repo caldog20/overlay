@@ -2,274 +2,208 @@ package controller
 
 import (
 	"context"
-	"errors"
-	"google.golang.org/protobuf/types/known/emptypb"
-	"log"
-	"net"
+	"fmt"
+	"github.com/caldog20/go-overlay/proto"
+	"github.com/twitchtv/twirp"
+	"net/http"
+	"net/netip"
+	"strconv"
 	"strings"
-	"sync"
-
-	"github.com/caldog20/go-overlay/ipam"
-	"github.com/caldog20/go-overlay/msg"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/peer"
+	"sync/atomic"
+	"time"
 )
 
-type client struct {
-	Id          uint32
-	Key         string
-	Hostname    string
-	VpnIP       string
-	Remote      string
-	PunchStream msg.ControlService_PunchSubscriberServer
-	Finished    chan bool
-}
+const (
+	Subnet = "100.65.0."
+)
 
-type ControlServer struct {
-	msg.UnimplementedControlServiceServer
-	clients sync.Map
-	ipman   *ipam.Ipam
-}
-
-func (s *ControlServer) Punch(ctx context.Context, req *msg.PunchRequest) (*emptypb.Empty, error) {
-	id, _ := s.ipman.WhoIsByIP(req.SrcVpnIp)
-	c, found := s.clients.Load(id)
-	if !found {
-		return nil, errors.New("requesting client not registered")
-	}
-
-	id, _ = s.ipman.WhoIsByIP(req.DstVpnIp)
-	p, found := s.clients.Load(id)
-	if !found {
-		return nil, errors.New("punchee client not found")
-	}
-
-	preq := c.(*client)
-	punchee := p.(*client)
-
-	if err := punchee.PunchStream.Send(&msg.PunchNotification{Remote: preq.Remote}); err != nil {
-		select {
-		case punchee.Finished <- true:
-			log.Print("unsubscribed client")
-		default:
-		}
-
-		// handle unsubscribing and errors
-	}
-	log.Printf("Sent punch request to %s for remote %s", req.DstVpnIp, preq.Remote)
-
-	return &emptypb.Empty{}, nil
-}
-
-func (s *ControlServer) PunchSubscriber(req *msg.PunchSubscribe, stream msg.ControlService_PunchSubscriberServer) error {
-	if req.Id == 0 {
-		return errors.New("id must not be zero")
-	}
-
-	ctx := stream.Context()
-	p, _ := peer.FromContext(ctx)
-	remote := p.Addr.String()
-	log.Printf("remote: %s ID %d subscribing to punch stream", remote, req.Id)
-
-	fin := make(chan bool)
-	var cl *client
-	c, found := s.clients.Load(req.Id)
-	if found {
-		cl = c.(*client)
-		cl.PunchStream = stream
-		cl.Finished = fin
-	} else {
-		return errors.New("error finding client requesting stream")
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			s.clients.Delete(cl.Id)
-			//s.ipman.DeallocateIP((c.VpnIP))
-			return nil
-		case <-fin:
-			s.clients.Delete(cl.Id)
-			//s.ipman.DeallocateIP((c.VpnIP))
-			return nil
-		}
-
+type Controller struct {
+	db      *DB
+	ipam    map[netip.Addr]struct{}
+	ipCount atomic.Uint64
+	updates struct {
+		changes []uint32
+		deletes []uint32
 	}
 }
 
-func (s *ControlServer) Register(ctx context.Context, req *msg.RegisterRequest) (*msg.RegisterReply, error) {
-	if req.Id == 0 {
-		return nil, errors.New("id must not be zero")
-	}
-	if req.Key == "" {
-		return nil, errors.New("key must not be nil")
-	}
-	// Get remote address of peer
-	p, _ := peer.FromContext(ctx)
-	remote := p.Addr.String()
-
-	// Check to see if IP is already allocated for ID
-
-	cip, err := s.ipman.WhoIsByID(req.Id)
-	if err != nil {
-		// ID not found, allocate
-		cip, err = s.ipman.AllocateIP(req.Id)
-		if err != nil {
-			log.Println(err)
-			return nil, errors.New("error allocating IP address")
-		}
-	}
-
-	newclient := &client{
-		Id:     req.Id,
-		Key:    req.Key,
-		VpnIP:  cip,
-		Remote: strings.Split(remote, ":")[0] + ":" + req.Port,
-	}
-
-	s.clients.Store(req.Id, newclient)
-
-	log.Printf("Registered Node - ID: %d - Remote: %s", newclient.Id, newclient.Remote)
-
-	return &msg.RegisterReply{
-		VpnIp: newclient.VpnIP,
-	}, nil
+func WithRemoteAddr(base http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ra := r.RemoteAddr
+		ra = strings.Split(ra, ":")[0]
+		ctx = context.WithValue(ctx, "remote-address", ra)
+		r = r.WithContext(ctx)
+		base.ServeHTTP(w, r)
+	})
 }
 
-func (s *ControlServer) Deregister(ctx context.Context, req *msg.DeregisterRequest) (*emptypb.Empty, error) {
-	if req.Id == 0 {
-		return nil, errors.New("id must not be zero")
-	}
-
-	s.clients.Delete(req.Id)
-	log.Printf("Deregistered node ID: %d", req.Id)
-	return &emptypb.Empty{}, nil
+func NewController() *Controller {
+	c := new(Controller)
+	c.db = NewDB()
+	c.ipam = make(map[netip.Addr]struct{})
+	c.ipCount.Store(1)
+	return c
 }
 
-func (s *ControlServer) WhoIsIp(ctx context.Context, req *msg.WhoIsIPRequest) (*msg.Remote, error) {
-	vpnip := req.GetVpnIp()
-
-	if vpnip == "" {
-		return nil, errors.New("ip must not be nil")
-	}
-
-	id, err := s.ipman.WhoIsByIP(vpnip)
-	if err != nil {
-		return nil, errors.New("client not found")
-	}
-
-	c, ok := s.clients.Load(id)
-	if !ok {
-		return nil, errors.New("vpn ip not found")
-	}
-
-	// check cast error here
-	client := c.(*client)
-
-	return &msg.Remote{
-		Id:     client.Id,
-		Key:    client.Key,
-		VpnIp:  client.VpnIP,
-		Remote: client.Remote,
-	}, nil
+func (c *Controller) RunController(ctx context.Context, port string) {
+	server := proto.NewControllerServer(c)
+	handler := WithRemoteAddr(server)
+	http.ListenAndServe(":"+port, handler)
 }
 
-func (s *ControlServer) WhoIsID(ctx context.Context, req *msg.WhoIsIDRequest) (*msg.Remote, error) {
-	id := req.GetId()
-	if id == 0 {
-		return nil, errors.New("id must not be zero")
+func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {
+	key := req.GetKey()
+	if key == "" {
+		return nil, twirp.InvalidArgumentError("key", "key cannot be nil")
 	}
 
-	c, found := s.clients.Load(id)
-	if !found {
-		return nil, errors.New("client not found")
-	}
-
-	//c, ok := s.clients.Load(id)
-	//if !ok {
-	//	return nil, errors.New("vpn ip not found")
+	//if req.Port == 0 || req.Port >= 65535 {
+	//	return nil, twirp.InvalidArgumentError("port", "invalid port")
 	//}
 
-	//check cast error here
-	client := c.(*client)
+	ra := ctx.Value("remote-address").(string)
 
-	return &msg.Remote{
-		Id:     client.Id,
-		Key:    client.Key,
-		VpnIp:  client.VpnIP,
-		Remote: client.Remote,
-	}, nil
-}
+	ra = fmt.Sprintf("%s:%d", ra, 5000)
+	raddr := netip.MustParseAddrPort(ra)
 
-func (s *ControlServer) RemoteList(ctx context.Context, req *msg.RemoteListRequest) (*msg.RemoteListReply, error) {
-	id := req.Id
-	if id == 0 {
-		return nil, errors.New("id must not be zero")
-	}
-
-	_, ok := s.clients.Load(id)
-	if !ok {
-		return nil, errors.New("requesting client not registered")
-	}
-
-	var rl []*msg.Remote
-
-	s.clients.Range(func(k, v interface{}) bool {
-		if k.(uint32) != id {
-			r := &msg.Remote{
-				Id:     v.(*client).Id,
-				Key:    v.(*client).Key,
-				VpnIp:  v.(*client).VpnIP,
-				Remote: v.(*client).Remote,
-			}
-			rl = append(rl, r)
-		} else {
-			log.Printf("not sending requestor its own client info: %v", id)
+	node, err := c.db.GetNodeByKey(key)
+	if err != nil {
+		// Node not found
+		node = c.NewNode(key, req.Hostname, raddr)
+		err = c.db.AddNode(node)
+		if err != nil {
+			return nil, twirp.InternalError(err.Error())
 		}
+	}
+	node.mu.Lock()
+	defer node.mu.Unlock()
 
-		return true
-	})
+	node.EndPoint = raddr
+	node.timestamp = time.Now()
+	node.Hostname = req.Hostname
 
-	return &msg.RemoteListReply{
-		Remotes: rl,
-	}, nil
+	resp := node.RegisterResponseProto()
+
+	return resp, nil
 }
 
-func RunController(ctx context.Context) {
-	lis, err := net.Listen("tcp4", ":5555")
+//func (c *Controller) GetUpdate(ctx context.Context, req *proto.UpdateRequest) (*proto.UpdateResponse, error) {
+//	if req.Id == 0 {
+//		return nil, twirp.InvalidArgumentError("id", "id must not be zero")
+//	}
+//
+//	// Handle updating node endpoint somwhow
+//	//node, err := c.db.GetNodeByID(req.Id)
+//	//if err != nil {
+//	//	return nil, twirp.InternalError("node not registered")
+//	//}
+//
+//	// for now just send node lists
+//	c.db.l.RLock()
+//	defer c.db.l.RUnlock()
+//
+//	var nodes []*proto.Node
+//	for _, n := range c.db.id {
+//		node := &proto.Node{
+//			Id:       n.ID,
+//			Ip:       n.VpnIP.String(),
+//			Hostname: n.Hostname,
+//			Endpoint: n.EndPoint.String(),
+//			Key:      n.NodeKey,
+//		}
+//		nodes = append(nodes, node)
+//	}
+//
+//	//resp := &proto.UpdateResponse{
+//	//	Type: proto.UpdateType_NODES,
+//	//	Update: &proto.UpdateResponse_NodeUpdate{
+//	//		&proto.NodeUpdate{
+//	//			Nodes: nodes,
+//	//		},
+//	//	},
+//	//}
+//
+//	return nil, nil
+//}
+
+func (c *Controller) NodeList(ctx context.Context, req *proto.NodeListRequest) (*proto.NodeListResponse, error) {
+	if req.Id == 0 {
+		return nil, twirp.InvalidArgumentError("id", "id must not be zero")
+	}
+
+	_, err := c.db.GetNodeByID(req.Id)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return nil, twirp.InternalError("requesting node not found")
 	}
 
-	i, err := ipam.NewIpam("100.65.0.0/24")
+	var nodes []*proto.Node
+	var count int
+
+	c.db.l.RLock()
+	defer c.db.l.RUnlock()
+	for _, node := range c.db.id {
+		nodes = append(nodes, node.Proto())
+		count++
+	}
+
+	resp := NodeListProto(count, nodes)
+
+	return resp, nil
+}
+
+func (c *Controller) NodeQuery(ctx context.Context, req *proto.NodeQueryRequest) (*proto.Node, error) {
+	if req.ReqId == 0 {
+		return nil, twirp.InvalidArgumentError("id", "id must not be zero")
+	}
+
+	_, err := c.db.GetNodeByID(req.ReqId)
 	if err != nil {
-		log.Fatal(err)
+		return nil, twirp.InternalError("requesting node not found")
 	}
 
-	cServer := &ControlServer{
-		ipman: i,
+	var node *Node
+	var resp *proto.Node
+
+	if req.NodeIp != nil {
+		ip := req.GetNodeIp()
+		node, err = c.db.GetNodeByIP(netip.MustParseAddr(ip))
+		if err != nil {
+			return nil, twirp.NotFoundError("node IP not found")
+		}
+	} else if req.NodeId != nil {
+		id := req.GetNodeId()
+		node, err = c.db.GetNodeByID(id)
+		if err != nil {
+			return nil, twirp.NotFoundError("node ID not found")
+		}
 	}
 
-	grpcServer := grpc.NewServer()
-	msg.RegisterControlServiceServer(grpcServer, cServer)
-
-	wg := sync.WaitGroup{}
-
-	wg.Add(1)
-	go func() {
-		<-ctx.Done()
-		//grpcServer.GracefulStop()
-		grpcServer.Stop()
-		wg.Done()
-	}()
-
-	log.Printf("starting grpc server on %v", lis.Addr().String())
-	err = grpcServer.Serve(lis)
-	if err != nil {
-		log.Fatalf("grpc serve error: %v", err)
+	if node == nil {
+		return nil, twirp.InternalError("Error processing request, node is nil")
 	}
 
-	wg.Wait()
-	log.Println("controller shutting down")
+	resp = node.Proto()
+
+	return resp, nil
+
+}
+
+func (c *Controller) NewNode(key string, hostname string, raddr netip.AddrPort) *Node {
+	node := new(Node)
+	node.ID = c.db.GenerateID()
+	node.VpnIP = c.AllocateIP()
+	node.NodeKey = key
+	node.Hostname = hostname
+	node.EndPoint = raddr
+
+	return node
+}
+
+func (c *Controller) AllocateIP() netip.Addr {
+	octet := c.ipCount.Load()
+	c.ipCount.Add(1)
+	ip := netip.MustParseAddr(Subnet + strconv.FormatUint(octet, 10))
+
+	return ip
 }

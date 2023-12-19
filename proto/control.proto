@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package proto;
+option go_package = "github.com/caldog20/go-overlay/proto";
+
+// Service for Controller
+service Controller {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+//  rpc GetUpdate(UpdateRequest) returns (UpdateResponse);
+  rpc NodeList(NodeListRequest) returns (NodeListResponse);
+  rpc NodeQuery(NodeQueryRequest) returns (Node);
+}
+
+
+// Connects node to control plane
+// If node is not registered, adds key to pending list on server
+message RegisterRequest {
+  string key = 1;
+  string hostname = 2;
+//  string endpoint = 3;
+}
+
+message RegisterResponse {
+  uint32 id = 1;
+  string ip = 2;
+}
+
+message Node {
+  uint32 id = 1;
+  string ip = 2;
+  string hostname = 3;
+  string endpoint = 4;
+  string key = 5;
+}
+
+message NodeListRequest {
+  uint32 id = 1;
+}
+
+message NodeListResponse {
+  uint32 count = 1;
+  repeated Node nodes = 2;
+}
+
+message NodeQueryRequest {
+  uint32 req_id = 1;
+  optional uint32 node_id = 2;
+  optional string node_ip = 3;
+}
+
+//enum UpdateType {
+//  NONE = 0;
+//  NODES = 1;
+//  NODE_DELEte = 2;
+//}
+//
+//message NodeUpdate {
+//  uint32 id = 1;
+//  optional string ip = 2;
+//  optional string hostname = 3;
+//  optional string endpoint = 4; // make repeated later or type
+//  optional string key = 5;
+//}
+//
+//message NodeDelete {
+//  uint32 id = 1;
+//}
+//
+////message NodeUpdate {
+////  repeated Node nodes = 1;
+////}
+//
+//message UpdateRequest {
+//  uint32 id = 1;
+//}
+//
+//message UpdateResponse {
+//  UpdateType type = 1;
+//
+//  oneof update {
+//    NodeUpdate node_update = 2;
+//    NodeDelete node_delete = 3;
+//  }
+//}
