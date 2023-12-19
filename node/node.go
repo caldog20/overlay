@@ -37,11 +37,6 @@ type Node struct {
 	controller proto.Controller
 }
 
-type Key struct {
-	Public  string
-	Private string
-}
-
 func NewNode(port string, controller string) (*Node, error) {
 	node := new(Node)
 	node.maps.id = make(map[uint32]*Peer)

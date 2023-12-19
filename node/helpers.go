@@ -2,22 +2,27 @@ package node
 
 import (
 	"encoding/base64"
-	"encoding/gob"
 	"errors"
 	"github.com/flynn/noise"
+	"gopkg.in/yaml.v3"
 	"os"
 )
+
+type Key struct {
+	Public  string `yaml:"PublicKey"`
+	Private string `yaml:"PrivateKey"`
+}
 
 func LoadKeyFromDisk() (noise.DHKey, error) {
 	var key Key
 	var noise noise.DHKey
 
-	keyfile, err := os.Open("~/overlay.keypair")
+	keyfile, err := os.Open(os.ExpandEnv("$HOME/overlay.keypair"))
 	if err != nil {
 		return noise, errors.New("File not found")
 	}
 
-	err = gob.NewDecoder(keyfile).Decode(&key)
+	err = yaml.NewDecoder(keyfile).Decode(&key)
 	if err != nil {
 		return noise, errors.New("error decoding file")
 	}
@@ -40,7 +45,7 @@ func LoadKeyFromDisk() (noise.DHKey, error) {
 func StoreKeyToDisk(keyPair noise.DHKey) error {
 	var key Key
 
-	keyfile, err := os.Create("~/.overlay.keypair")
+	keyfile, err := os.Create(os.ExpandEnv("$HOME/overlay.keypair"))
 	if err != nil {
 		return err
 	}
@@ -49,7 +54,7 @@ func StoreKeyToDisk(keyPair noise.DHKey) error {
 	key.Private = base64.StdEncoding.EncodeToString(keyPair.Private)
 	key.Public = base64.StdEncoding.EncodeToString(keyPair.Public)
 
-	err = gob.NewEncoder(keyfile).Encode(key)
+	err = yaml.NewEncoder(keyfile).Encode(key)
 	if err != nil {
 		return err
 	}
