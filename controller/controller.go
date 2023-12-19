@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/caldog20/go-overlay/proto"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/twitchtv/twirp"
 	"net/http"
 	"net/netip"
@@ -47,9 +49,16 @@ func NewController() *Controller {
 }
 
 func (c *Controller) RunController(ctx context.Context, port string) {
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
 	server := proto.NewControllerServer(c)
 	handler := WithRemoteAddr(server)
-	http.ListenAndServe(":"+port, handler)
+
+	e.Any("/twirp*", echo.WrapHandler(handler))
+
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", port)))
 }
 
 func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {
