@@ -34,16 +34,17 @@ peer:
 server-mips:
 	GOOS=linux GOARCH=mipsle go build -ldflags '$(LDFLAGS)' -o ./bin/controller ./cmd/controller
 	scp ./bin/controller root@10.170.241.1:~
+	ssh root@10.170.241.1 -t './controller'
 
 peer-test:
 	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
 	scp ./bin/node yatesca@10.170.241.66:~
-	ssh yatesca@10.170.241.66 -t 'sudo ~/node -id 100'
+	ssh yatesca@10.170.241.66 -t 'sudo ~/node'
 
 peer-test2:
 	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
 	scp ./bin/node yatesca@10.170.241.11:~
-	ssh yatesca@10.170.241.11 -t 'sudo ~/node -id 200'
+	ssh yatesca@10.170.241.11 -t 'sudo ~/node'
 #test:
 #	$(GOTEST) `go list ./... | grep -v tools | grep -v systray`
 

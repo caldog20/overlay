@@ -73,7 +73,7 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 
 	ra := ctx.Value("remote-address").(string)
 
-	ra = fmt.Sprintf("%s:%d", ra, 5000)
+	ra = fmt.Sprintf("%s:%d", ra, 5555)
 	raddr := netip.MustParseAddrPort(ra)
 
 	node, err := c.db.GetNodeByKey(key)
