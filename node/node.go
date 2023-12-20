@@ -244,12 +244,7 @@ func (node *Node) OnTunnelPacket(buffer *OutboundBuffer) {
 		return
 	}
 
-	if peer.running.Load() {
-		peer.outbound <- buffer
-	} else {
-		//peer.pending <- buffer
-		go peer.Run(true)
-	}
+	peer.OutboundPacket(buffer)
 
 	return
 }

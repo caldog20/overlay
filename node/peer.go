@@ -36,7 +36,8 @@ type Peer struct {
 	pending    chan *OutboundBuffer
 	handshakes chan *InboundBuffer
 
-	running atomic.Bool
+	running     atomic.Bool
+	inTransport atomic.Bool
 
 	wg     sync.WaitGroup
 	ctx    context.Context
@@ -49,8 +50,8 @@ func NewPeer() *Peer {
 	// channels
 	peer.inbound = make(chan *InboundBuffer, 64)
 	peer.outbound = make(chan *OutboundBuffer, 64)
-	peer.pending = make(chan *OutboundBuffer, 8)
-	peer.handshakes = make(chan *InboundBuffer, 3)
+	peer.pending = make(chan *OutboundBuffer, 16)  // 16 pending packets???
+	peer.handshakes = make(chan *InboundBuffer, 1) // Handshake packet buffering???
 
 	peer.wg = sync.WaitGroup{}
 
@@ -109,6 +110,18 @@ func (peer *Peer) Run(initiator bool) {
 	peer.noise.rx = nil
 	peer.noise.tx = nil
 	peer.noise.state.Store(0)
+}
+
+func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
+	if !peer.running.Load() {
+		go peer.Run(true)
+	}
+
+	if peer.inTransport.Load() {
+		peer.outbound <- buffer
+	} else {
+		peer.pending <- buffer
+	}
 }
 
 func (peer *Peer) InitHandshake(initiator bool) error {

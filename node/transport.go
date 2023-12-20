@@ -46,7 +46,7 @@ func (peer *Peer) Inbound() {
 
 func (peer *Peer) Outbound() {
 	defer peer.wg.Done()
-
+	peer.SendPending() // Block here until nothing else on channel to send pending
 	for {
 		select {
 		case <-peer.ctx.Done():
@@ -108,6 +108,34 @@ func (peer *Peer) Handshake(initiate bool) {
 	}
 }
 
+func (peer *Peer) SendPending() {
+	for {
+		select {
+		case buffer, ok := <-peer.pending:
+			if !ok {
+				return // channel closed??
+			}
+			peer.mu.RLock()
+			out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
+			out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
+			if err != nil {
+				// TODO, if encrypt fails then reset state and start over
+				// Maybe generalize outbound sending and use here?
+				log.Println("encrypt failed for pending packet")
+				PutOutboundBuffer(buffer)
+				peer.mu.RUnlock()
+				continue
+			}
+			peer.node.conn.WriteToUdp(out, peer.raddr)
+			PutOutboundBuffer(buffer)
+			peer.mu.RUnlock()
+		default:
+			return
+		}
+	}
+
+}
+
 func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 	// encode header
 	final, _ := buffer.header.Encode(buffer.out, Handshake, peer.node.id, 0)
@@ -122,6 +150,7 @@ func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 	log.Printf("sending p1 to peer %s", peer.raddr.String())
 }
 
+// TODO Refactor this
 func (peer *Peer) handshakeP2(buffer *InboundBuffer) {
 	var err error
 	log.Printf("received handshake message from peer %s", peer.raddr.String())
@@ -135,6 +164,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) {
 		peer.noise.state.Store(2)
 		peer.mu.Unlock()
 		PutInboundBuffer(buffer)
+		peer.inTransport.Store(true)
 		return
 	}
 
@@ -150,6 +180,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) {
 	if err != nil {
 		panic("error reading handshake message")
 	}
+
 	outbuf := GetOutboundBuffer()
 	final, _ := outbuf.header.Encode(outbuf.out, Handshake, peer.node.id, 1)
 	final, peer.noise.rx, peer.noise.tx, err = peer.noise.hs.WriteMessage(final, nil)
@@ -158,8 +189,9 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) {
 	}
 
 	peer.node.conn.WriteToUdp(final, peer.raddr)
-	PutOutboundBuffer(outbuf)
 	peer.noise.state.Store(2)
 	peer.noise.hs = nil
 	peer.mu.Unlock()
+	PutOutboundBuffer(outbuf)
+	peer.inTransport.Store(true)
 }
