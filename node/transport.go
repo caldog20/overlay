@@ -2,6 +2,7 @@ package node
 
 import (
 	"log"
+	"time"
 )
 
 func (peer *Peer) contextDone() bool {
@@ -20,6 +21,7 @@ func (peer *Peer) Inbound() {
 	for {
 		select {
 		case <-peer.ctx.Done():
+			log.Println("DONE")
 			return
 		case buffer := <-peer.inbound:
 			peer.mu.RLock()
@@ -50,6 +52,7 @@ func (peer *Peer) Outbound() {
 	for {
 		select {
 		case <-peer.ctx.Done():
+			log.Println("DONE")
 			return
 		case buffer := <-peer.outbound:
 			peer.mu.RLock()
@@ -77,13 +80,22 @@ func (peer *Peer) Handshake(initiate bool) {
 		peer.InitHandshake(true)
 		buffer := GetOutboundBuffer()
 		peer.handshakeP1(buffer)
+		peer.timers.handshakeSent.Stop()
+		peer.timers.handshakeSent.Reset(time.Second * 3)
 		//peer.mu.Unlock()
 	}
 
 	for {
 		select {
 		case <-peer.ctx.Done():
+			log.Println("DONE")
 			return
+		case <-peer.timers.handshakeSent.C:
+			if peer.noise.state.Load() == 1 {
+				peer.cancel()
+				peer.mu.Unlock()
+				return
+			}
 		case hs := <-peer.handshakes:
 			// received handshake inbound, process
 			state := peer.noise.state.Load()
@@ -111,9 +123,15 @@ func (peer *Peer) Handshake(initiate bool) {
 func (peer *Peer) SendPending() {
 	for {
 		select {
+		case <-peer.ctx.Done():
+			log.Println("DONE")
+			return
 		case buffer, ok := <-peer.pending:
 			if !ok {
 				return // channel closed??
+			}
+			if !peer.inTransport.Load() {
+				return
 			}
 			peer.mu.RLock()
 			out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
@@ -122,13 +140,13 @@ func (peer *Peer) SendPending() {
 				// TODO, if encrypt fails then reset state and start over
 				// Maybe generalize outbound sending and use here?
 				log.Println("encrypt failed for pending packet")
-				PutOutboundBuffer(buffer)
 				peer.mu.RUnlock()
+				PutOutboundBuffer(buffer)
 				continue
 			}
 			peer.node.conn.WriteToUdp(out, peer.raddr)
-			PutOutboundBuffer(buffer)
 			peer.mu.RUnlock()
+			PutOutboundBuffer(buffer)
 		default:
 			return
 		}

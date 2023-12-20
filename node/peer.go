@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"github.com/caldog20/go-overlay/proto"
 	"github.com/flynn/noise"
+	"log"
 	"net"
 	"net/netip"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Peer struct {
@@ -29,6 +31,10 @@ type Peer struct {
 		initiator bool
 		pubkey    []byte
 		txNonce   atomic.Uint64
+	}
+
+	timers struct {
+		handshakeSent *time.Timer
 	}
 
 	inbound    chan *InboundBuffer
@@ -52,6 +58,9 @@ func NewPeer() *Peer {
 	peer.outbound = make(chan *OutboundBuffer, 64)
 	peer.pending = make(chan *OutboundBuffer, 16)  // 16 pending packets???
 	peer.handshakes = make(chan *InboundBuffer, 1) // Handshake packet buffering???
+
+	peer.timers.handshakeSent = time.NewTimer(time.Second * 1)
+	peer.timers.handshakeSent.Stop()
 
 	peer.wg = sync.WaitGroup{}
 
@@ -105,11 +114,8 @@ func (peer *Peer) Run(initiator bool) {
 	defer peer.mu.Unlock()
 
 	// Cleanup peer state and return to idle peer
-	peer.flushQueues()
-	peer.noise.hs = nil
-	peer.noise.rx = nil
-	peer.noise.tx = nil
-	peer.noise.state.Store(0)
+	peer.ResetState()
+	log.Println("Shutting peer down")
 }
 
 func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
@@ -122,6 +128,16 @@ func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
 	} else {
 		peer.pending <- buffer
 	}
+}
+
+func (peer *Peer) ResetState() {
+	peer.flushQueues()
+	peer.noise.hs = nil
+	peer.noise.rx = nil
+	peer.noise.tx = nil
+	peer.noise.state.Store(0)
+	peer.inTransport.Store(false)
+	peer.running.Store(false)
 }
 
 func (peer *Peer) InitHandshake(initiator bool) error {
