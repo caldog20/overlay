@@ -22,8 +22,6 @@ func httpProfile() {
 func main() {
 	cpus := runtime.NumCPU()
 	runtime.GOMAXPROCS(cpus)
-
-	httpProfile()
 	//f, err := os.Create("p.prof")
 	//if err != nil {
 	//
