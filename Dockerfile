@@ -11,5 +11,5 @@ RUN go build -o /node ./cmd/node
 #RUN chmod +x ./node
 #RUN apk add openvpn
 
-EXPOSE 12000
-CMD [ "/node", "-id", "1000", "-port", "12000" ]
+EXPOSE 5555/udp
+CMD [ "/node", "-port", "5555" ]
