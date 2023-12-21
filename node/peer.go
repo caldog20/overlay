@@ -14,10 +14,10 @@ import (
 )
 
 type Peer struct {
-	mu sync.RWMutex
-
-	Hostname string
-	raddr    *net.UDPAddr // Change later to list of endpoints and track active
+	mu          sync.RWMutex
+	pendingLock sync.Mutex
+	Hostname    string
+	raddr       *net.UDPAddr // Change later to list of endpoints and track active
 
 	node *Node // Pointer back to node for stuff
 	Ip   netip.Addr
@@ -57,7 +57,7 @@ func NewPeer() *Peer {
 	peer.inbound = make(chan *InboundBuffer, 64)
 	peer.outbound = make(chan *OutboundBuffer, 64)
 	peer.pending = make(chan *OutboundBuffer, 16)  // 16 pending packets???
-	peer.handshakes = make(chan *InboundBuffer, 1) // Handshake packet buffering???
+	peer.handshakes = make(chan *InboundBuffer, 2) // Handshake packet buffering???
 
 	peer.timers.handshakeSent = time.NewTimer(time.Second * 1)
 	peer.timers.handshakeSent.Stop()
@@ -103,9 +103,9 @@ func (peer *Peer) Run(initiator bool) {
 
 	peer.mu.Unlock() // Unlock and launch routines
 
+	go peer.Handshake(initiator)
 	go peer.Inbound()
 	go peer.Outbound()
-	go peer.Handshake(initiator)
 
 	// Wait here for goroutines to finish
 	peer.wg.Wait()
@@ -126,7 +126,10 @@ func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
 	if peer.inTransport.Load() {
 		peer.outbound <- buffer
 	} else {
-		peer.pending <- buffer
+		//select {
+		//case peer.pending <- buffer:
+		//default:
+		//}
 	}
 }
 
@@ -138,6 +141,7 @@ func (peer *Peer) ResetState() {
 	peer.noise.state.Store(0)
 	peer.inTransport.Store(false)
 	peer.running.Store(false)
+	//peer.pendingLock.Unlock()
 }
 
 func (peer *Peer) InitHandshake(initiator bool) error {

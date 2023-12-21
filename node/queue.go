@@ -1,7 +1,6 @@
 package node
 
 import (
-	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -40,7 +39,8 @@ func NewInboundBuffer() interface{} {
 	buffer.size = 0
 	buffer.header = NewHeader()
 	buffer.peer = nil
-	log.Println("NewInboundBuffer")
+
+	//log.Println("NewInboundBuffer")
 	return buffer
 }
 
@@ -70,7 +70,8 @@ func NewOutboundBuffer() interface{} {
 	buffer.size = 0
 	buffer.header = NewHeader()
 	buffer.peer = nil
-	log.Println("NewOutboundBuffer")
+
+	//log.Println("NewOutboundBuffer")
 	return buffer
 }
 

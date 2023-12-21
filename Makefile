@@ -1,11 +1,12 @@
 GOVER := $(shell go version)
+CGO := 1
 
 GOOS    := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 GOARCH  := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
-GOENV   := GO111MODULE=on CGO_ENABLED=1 GOOS=$(GOOS) GOARCH=$(GOARCH)
+GOENV   := GOOS=$(GOOS) GOARCH=$(GOARCH)
 GO      := $(GOENV) go
 GOBUILD := $(GO) build $(BUILD_FLAG)
-GOTEST  := GO111MODULE=on CGO_ENABLED=1 $(GO) test -p 3
+GOTEST  := $(GO) test -p 3
 SHELL   := /usr/bin/env bash
 
 COMMIT    := $(shell git describe --no-match --always --dirty)
@@ -13,10 +14,8 @@ BRANCH    := $(shell git rev-parse --abbrev-ref HEAD)
 BUILDTIME := $(shell date '+%Y-%m-%d %T %z')
 
 REPO := github.com/caldog20/go-overlay
-LDFLAGS := -w -s
-LDFLAGS += -X "$(REPO)/version.GitHash=$(COMMIT)"
-LDFLAGS += -X "$(REPO)/version.GitBranch=$(BRANCH)"
-LDFLAGS += $(EXTRA_LDFLAGS)
+
+LDFLAGS := -ldflags '-w -s'
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
@@ -25,24 +24,30 @@ FILES = $(call rwildcard,./,*.go)
 
 all: server peer
 
+vendor:
+	@go mod vendor
+
+tidy:
+	@go mod tidy
+
 server:
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o ./bin/controller ./cmd/controller
+	$(GOBUILD) $(LDFLAGS) -o ./bin/controller ./cmd/controller
 
 peer:
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
+	$(GOBUILD) $(LDFLAGS) -o ./bin/node ./cmd/node
 
 server-mips:
-	GOOS=linux GOARCH=mipsle go build -ldflags '$(LDFLAGS)' -o ./bin/controller ./cmd/controller
+	GOOS=linux GOARCH=mipsle go build $(LDFLAGS) -o ./bin/controller ./cmd/controller
 	scp ./bin/controller root@10.170.241.1:~
 	ssh root@10.170.241.1 -t './controller'
 
 peer-test:
-	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ./bin/node ./cmd/node
 	scp ./bin/node yatesca@10.170.241.66:~
 	ssh yatesca@10.170.241.66 -t 'sudo ~/node'
 
 peer-test2:
-	GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o ./bin/node ./cmd/node
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ./bin/node ./cmd/node
 	scp ./bin/node yatesca@10.170.241.11:~
 	ssh yatesca@10.170.241.11 -t 'sudo ~/node'
 #test:
@@ -68,6 +73,9 @@ check: vet fmt
 
 runserver: server
 	./bin/controller
+
+runnode: peer
+
 
 clean:
 	rm -rf ./bin
