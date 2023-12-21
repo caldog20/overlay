@@ -1,4 +1,4 @@
-module github.com/caldog20/go-overlay
+module github.com/caldog20/overlay
 
 go 1.21
 

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/caldog20/go-overlay/controller"
+	"github.com/caldog20/overlay/controller"
 )
 
 func main() {

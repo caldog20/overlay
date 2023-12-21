@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/caldog20/go-overlay/proto"
+	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
 )

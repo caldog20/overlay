@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package proto;
-option go_package = "github.com/caldog20/go-overlay/proto";
+option go_package = "github.com/caldog20/overlay/proto";
 
 // Service for Controller
 service Controller {

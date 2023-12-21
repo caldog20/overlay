@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/caldog20/go-overlay/node"
+	"github.com/caldog20/overlay/node"
 	"log"
 	"net/http"
 	"os"

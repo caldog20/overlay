@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"encoding/base64"
-	"github.com/caldog20/go-overlay/proto"
+	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
 	"log"
 	"net"

@@ -1,6 +1,6 @@
 package controller
 
-import "github.com/caldog20/go-overlay/proto"
+import "github.com/caldog20/overlay/proto"
 
 func (node *Node) Proto() *proto.Node {
 	return &proto.Node{
