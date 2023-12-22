@@ -2,12 +2,13 @@ package node
 
 import (
 	"fmt"
-	"github.com/rcrowley/go-metrics"
-	"github.com/songgao/water"
 	"log"
 	"net/netip"
 	"os/exec"
 	"runtime"
+
+	"github.com/rcrowley/go-metrics"
+	"github.com/songgao/water"
 )
 
 type TunMetrics struct {

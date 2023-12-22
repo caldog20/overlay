@@ -2,10 +2,11 @@ package controller
 
 import (
 	"embed"
-	"github.com/labstack/echo/v4"
 	"html/template"
 	"io"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 //go:embed static/*

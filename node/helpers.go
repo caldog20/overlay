@@ -3,9 +3,10 @@ package node
 import (
 	"encoding/base64"
 	"errors"
+	"os"
+
 	"github.com/flynn/noise"
 	"gopkg.in/yaml.v3"
-	"os"
 )
 
 type Key struct {

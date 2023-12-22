@@ -10,12 +10,11 @@ Things need refactored within the peer to make it possible to test the peer logi
 
 This may mean custom types are required to wrap tunnel/udp types to make test types to pass to the peer
 
-This may also mean a manager type is needed to wrap tunnel/udp connections from the host in order to mock it for testing and pass it to the peer
+This may also mean a manager type is needed to wrap tunnel/udp connections from the host in order to mock it for testing
+and pass it to the peer
 or make a mock node possible
 
-These are just ramblings of my scattered brain trying to put this together in a manageable/testable way, which is
-currently changing every 5 minutes ^.^
-
+I'm rambling now.. ^.^
 
 - Change peers to start when added
 - Lock node keypair when using it for handshake initiation

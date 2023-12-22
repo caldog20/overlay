@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"github.com/caldog20/overlay/proto"
-	"github.com/flynn/noise"
 	"log"
 	"net"
 	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/caldog20/overlay/proto"
+	"github.com/flynn/noise"
 )
 
 type Peer struct {

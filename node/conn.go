@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/sys/unix"
 	"net"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 const (

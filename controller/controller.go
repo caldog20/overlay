@@ -3,16 +3,17 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/caldog20/overlay/proto"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/twitchtv/twirp"
 	"net/http"
 	"net/netip"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/caldog20/overlay/proto"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"github.com/twitchtv/twirp"
 )
 
 const (

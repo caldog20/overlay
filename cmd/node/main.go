@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/caldog20/overlay/node"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
+
+	"github.com/caldog20/overlay/node"
 )
 
 func httpProfile() {
