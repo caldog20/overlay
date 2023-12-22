@@ -4,7 +4,7 @@
 # Binaries for programs and plugins
 *.exe
 *.exe~
-*.dll
+#*.dll
 *.so
 *.dylib
 *.bin
@@ -23,7 +23,7 @@ go.work
 
 *test
 go-overlay
-bin/
+./bin/
 patches/
 
 # IDE Files
