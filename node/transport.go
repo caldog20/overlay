@@ -16,98 +16,81 @@ func (peer *Peer) contextDone() bool {
 
 func (peer *Peer) Inbound() {
 	//log.Print("starting inbound routine")
-	defer peer.wg.Done()
 
 	var err error
-	for {
-		select {
-		case <-peer.ctx.Done():
-			log.Println("DONE")
-			return
-		case buffer := <-peer.inbound:
-			peer.mu.RLock()
-			peer.noise.rx.SetNonce(buffer.header.Counter)
-			buffer.packet, err = peer.noise.rx.Decrypt(buffer.packet[:0], nil, buffer.in[HeaderLen:buffer.size])
-			if err != nil {
-				log.Println("decrypt failed")
-				PutInboundBuffer(buffer)
-				peer.mu.RUnlock()
-				continue
-			}
-			peer.mu.RUnlock()
-			peer.node.tun.Write(buffer.packet)
-			// TODO Fix remote address roaming updates
-			//if !peer.raddr.IP.Equal(buffer.raddr.IP) {
-			//	peer.mu.Lock()
-			//	peer.raddr = buffer.raddr
-			//	peer.mu.Unlock()
-			//}
+
+	for buffer := range peer.inbound {
+		peer.pendingLock.RLock()
+		peer.noise.rx.SetNonce(buffer.header.Counter)
+		buffer.packet, err = peer.noise.rx.Decrypt(buffer.packet[:0], nil, buffer.in[HeaderLen:buffer.size])
+		if err != nil {
+			log.Println("decrypt failed")
 			PutInboundBuffer(buffer)
+			peer.pendingLock.RUnlock()
+			continue
 		}
+		peer.pendingLock.RUnlock()
+		peer.node.tun.Write(buffer.packet)
+		// TODO Fix remote address roaming updates
+		//if !peer.raddr.IP.Equal(buffer.raddr.IP) {
+		//	peer.mu.Lock()
+		//	peer.raddr = buffer.raddr
+		//	peer.mu.Unlock()
+		//}
+		PutInboundBuffer(buffer)
 	}
 }
 
 func (peer *Peer) Outbound() {
-	//log.Print("starting outbound routine")
-	defer peer.wg.Done()
-	peer.SendPending() // Block here until nothing else on channel to send pending
-	for {
-		select {
-		case <-peer.ctx.Done():
-			log.Println("DONE")
-			return
-		case buffer := <-peer.outbound:
-			peer.mu.RLock()
-			out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
-			out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
-			if err != nil {
-				log.Println("encrypt failed")
-				PutOutboundBuffer(buffer)
-				peer.mu.RUnlock()
-				continue
-			}
-			peer.node.conn.WriteToUdp(out, peer.raddr)
-			//log.Printf("Sent data to %s - len: %d", p.remote.String(), elem.size)
+	for buffer := range peer.outbound {
+		peer.pendingLock.RLock()
+		out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
+		out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
+		if err != nil {
+			log.Println("encrypt failed")
 			PutOutboundBuffer(buffer)
-			peer.mu.RUnlock()
+			peer.pendingLock.RUnlock()
+			continue
 		}
+		peer.pendingLock.RUnlock()
+		peer.node.conn.WriteToUdp(out, peer.raddr)
+		//log.Printf("Sent data to %s - len: %d", p.remote.String(), elem.size)
+		PutOutboundBuffer(buffer)
 	}
 }
 
-func (peer *Peer) Handshake(initiate bool) {
-	//log.Print("starting handshake routine")
-	defer peer.wg.Done()
-
-	if initiate {
-		peer.mu.Lock()
-		peer.InitHandshake(true)
-		buffer := GetOutboundBuffer()
-		peer.handshakeP1(buffer)
-		peer.timers.handshakeSent.Stop()
-		peer.timers.handshakeSent.Reset(time.Second * 3)
-		//peer.pendingLock.Lock()
-		//peer.mu.Unlock()
+func (peer *Peer) TrySendHandshake() {
+	// TODO validate placement of lock here
+	if peer.noise.state.Load() > 0 {
+		select {
+		// Handshake response not received, send another handshake
+		case <-peer.timers.handshakeSent.C:
+			log.Printf("peer %d handshake response never receieved, resending", peer.Id)
+		default:
+			return
+		}
 	}
+
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+	peer.InitHandshake(true)
+	buffer := GetOutboundBuffer()
+	peer.handshakeP1(buffer)
+	peer.timers.handshakeSent.Stop()
+	peer.timers.handshakeSent.Reset(time.Second * 3)
+}
+
+func (peer *Peer) Handshake() {
+	//log.Print("starting handshake routine")
 
 	for {
 		select {
-		case <-peer.ctx.Done():
-			log.Println("DONE")
-			return
-		case <-peer.timers.handshakeSent.C:
-			log.Println("HANDSHAKE TIMEOUT")
-			if peer.noise.state.Load() == 1 {
-				peer.cancel()
-				peer.mu.Unlock()
-				return
-			}
 		case hs := <-peer.handshakes:
+			log.Printf("peer %d received handshake message", peer.Id)
 			// received handshake inbound, process
 			state := peer.noise.state.Load()
 			switch state {
-			// receiving first handshake message as responder
-			case 0:
-				// receiving handshake response as initiator
+			case 0: // receiving first handshake message as responder
 				if hs.header.Counter != 0 {
 					panic("header counter doesnt match state 0")
 				}
@@ -116,10 +99,10 @@ func (peer *Peer) Handshake(initiate bool) {
 					panic(err)
 				}
 				peer.noise.state.Store(2)
-				peer.mu.Unlock()
 				peer.inTransport.Store(true)
+				peer.pendingLock.Unlock()
 				// Handshake finished
-			case 1:
+			case 1: // receiving handshake response as initiator
 				if hs.header.Counter != 1 {
 					panic("header counter doesnt match state 1")
 				}
@@ -128,9 +111,18 @@ func (peer *Peer) Handshake(initiate bool) {
 					panic(err)
 				}
 				peer.noise.state.Store(2)
-				peer.mu.Unlock()
 				peer.inTransport.Store(true)
-				// Handshake finished
+				peer.pendingLock.Unlock()
+			// Handshake finished
+			case 2: // Receiving new handshake from peer, lock and consume handshake initiation
+				peer.pendingLock.Lock()
+				err := peer.handshakeP2(hs)
+				if err != nil {
+					panic(err)
+				}
+				peer.noise.state.Store(2)
+				peer.inTransport.Store(true)
+				peer.pendingLock.Unlock()
 			default:
 				panic("out of sequence handshake message received")
 			}
@@ -139,36 +131,33 @@ func (peer *Peer) Handshake(initiate bool) {
 	}
 }
 
-func (peer *Peer) SendPending() {
-	//peer.pendingLock.Lock()
-	//defer peer.pendingLock.Unlock()
-	//peer.mu.RLock()
-	//peer.mu.RUnlock()
-
-	for {
-		buffer, ok := <-peer.pending
-		if !ok {
-			return
-		}
-		if peer.contextDone() {
-			return
-		}
-		peer.mu.RLock()
-		out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
-		out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
-		if err != nil {
-			// TODO, if encrypt fails then reset state and start over
-			// Maybe generalize outbound sending and use here?
-			log.Println("encrypt failed for pending packet")
-			peer.mu.RUnlock()
-			PutOutboundBuffer(buffer)
-			continue
-		}
-		peer.node.conn.WriteToUdp(out, peer.raddr)
-		peer.mu.RUnlock()
-		PutOutboundBuffer(buffer)
-	}
-}
+//func (peer *Peer) SendPending() {
+//	//peer.pendingLock.Lock()
+//	//defer peer.pendingLock.Unlock()
+//	//peer.mu.RLock()
+//	//peer.mu.RUnlock()
+//
+//	for {
+//		buffer, ok := <-peer.pending
+//		if !ok {
+//			return
+//		}
+//		peer.mu.RLock()
+//		out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
+//		out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
+//		if err != nil {
+//			// TODO, if encrypt fails then reset state and start over
+//			// Maybe generalize outbound sending and use here?
+//			log.Println("encrypt failed for pending packet")
+//			peer.mu.RUnlock()
+//			PutOutboundBuffer(buffer)
+//			continue
+//		}
+//		peer.node.conn.WriteToUdp(out, peer.raddr)
+//		peer.mu.RUnlock()
+//		PutOutboundBuffer(buffer)
+//	}
+//}
 
 func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 	// encode header
@@ -186,6 +175,9 @@ func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 
 // TODO Refactor this
 func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
 	var err error
 	log.Printf("received handshake message from peer %s", peer.raddr.String())
 	if peer.noise.initiator {
@@ -196,7 +188,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 		peer.raddr = buffer.raddr
 		peer.noise.hs = nil
 	} else {
-		peer.mu.Lock()
+		//peer.mu.Lock()
 		// Initialze handshake for responder
 		err = peer.InitHandshake(false)
 		if err != nil {

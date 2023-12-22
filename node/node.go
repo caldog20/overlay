@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
@@ -33,6 +34,8 @@ type Node struct {
 		l       sync.RWMutex
 		keyPair noise.DHKey
 	}
+
+	running atomic.Bool
 
 	controller proto.Controller
 }
@@ -95,11 +98,11 @@ func (node *Node) Run(ctx context.Context) {
 	// TODO
 	<-ctx.Done()
 
-	for _, peer := range node.maps.id {
-		if peer.running.Load() {
-			peer.cancel()
-		}
-	}
+	//for _, peer := range node.maps.id {
+	//	if peer.running.Load() {
+	//		peer.cancel()
+	//	}
+	//}
 }
 
 func (node *Node) Register() error {
@@ -140,7 +143,11 @@ func (node *Node) UpdateNodes() error {
 
 	if len(new) > 0 {
 		for _, n := range new {
-			_, err := node.AddPeer(n)
+			p, err := node.AddPeer(n)
+			if err != nil {
+				panic(err)
+			}
+			err = p.Start()
 			if err != nil {
 				panic(err)
 			}
@@ -186,15 +193,14 @@ func (node *Node) OnUdpPacket(buffer *InboundBuffer, index int) {
 	// Remote peer sent handshake message
 	case Handshake:
 		// Callee responsible to returning buffer to pool
-		peer.handshakes <- buffer
-		if peer.running.Load() == false {
-			go peer.Run(false)
+		if peer.running.Load() {
+			peer.handshakes <- buffer
 		}
 		return
 	// Remote peer sent encrypted data
 	case Data:
 		// Callee responsible to returning buffer to pool
-		peer.inbound <- buffer
+		peer.InboundPacket(buffer)
 		return
 	// Remote peer sent punch packet
 	case Punch:

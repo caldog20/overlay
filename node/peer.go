@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
 	"log"
@@ -15,7 +16,7 @@ import (
 
 type Peer struct {
 	mu          sync.RWMutex
-	pendingLock sync.Mutex
+	pendingLock sync.RWMutex
 	Hostname    string
 	raddr       *net.UDPAddr // Change later to list of endpoints and track active
 
@@ -59,7 +60,7 @@ func NewPeer() *Peer {
 	peer.pending = make(chan *OutboundBuffer, 16)  // 16 pending packets???
 	peer.handshakes = make(chan *InboundBuffer, 2) // Handshake packet buffering???
 
-	peer.timers.handshakeSent = time.NewTimer(time.Second * 1)
+	peer.timers.handshakeSent = time.NewTimer(time.Second * 3)
 	peer.timers.handshakeSent.Stop()
 
 	peer.wg = sync.WaitGroup{}
@@ -70,6 +71,9 @@ func NewPeer() *Peer {
 
 func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 	peer := NewPeer()
+
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
 
 	peer.node = node
 
@@ -90,20 +94,41 @@ func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 	return peer, nil
 }
 
+func (peer *Peer) Start() error {
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	// Peer is already running
+	if peer.running.Load() {
+		return errors.New("Peer already running.")
+	}
+
+	// Lock here when starting peer so routines have to wait for handshake before trying to read data from channels
+	peer.pendingLock.Lock()
+
+	go peer.Inbound()
+	go peer.Outbound()
+	go peer.Handshake()
+
+	peer.running.Store(true)
+	peer.inTransport.Store(false)
+	return nil
+}
+
 func (peer *Peer) Run(initiator bool) {
 	if peer.running.Load() {
 		return
 	}
 
 	peer.mu.Lock() // Lock the peer state
-	peer.ctx, peer.cancel = context.WithCancel(context.Background())
+	//peer.ctx, peer.cancel = context.WithCancel(context.Background())
 
 	peer.running.Store(true)
 	peer.wg.Add(3)
 
 	peer.mu.Unlock() // Unlock and launch routines
 
-	go peer.Handshake(initiator)
+	//go peer.Handshake(initiator)
 	go peer.Inbound()
 	go peer.Outbound()
 
@@ -118,18 +143,35 @@ func (peer *Peer) Run(initiator bool) {
 	log.Println("Shutting peer down")
 }
 
-func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
+func (peer *Peer) InboundPacket(buffer *InboundBuffer) {
 	if !peer.running.Load() {
-		go peer.Run(true)
+		PutInboundBuffer(buffer)
+		return
 	}
 
-	if peer.inTransport.Load() {
-		peer.outbound <- buffer
-	} else {
-		//select {
-		//case peer.pending <- buffer:
-		//default:
-		//}
+	select {
+	case peer.inbound <- buffer:
+	default:
+		log.Printf("peer id %d: inbound channel full", peer.Id)
+	}
+}
+
+func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
+	if !peer.running.Load() {
+		PutOutboundBuffer(buffer)
+		return
+	}
+
+	// For tracking full channels
+	select {
+	case peer.outbound <- buffer:
+	default:
+		log.Printf("peer id %d: outbound channel full", peer.Id)
+		return
+	}
+
+	if !peer.inTransport.Load() {
+		peer.TrySendHandshake()
 	}
 }
 

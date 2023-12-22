@@ -15,3 +15,7 @@ or make a mock node possible
 
 These are just ramblings of my scattered brain trying to put this together in a manageable/testable way, which is
 currently changing every 5 minutes ^.^
+
+
+- Change peers to start when added
+- Lock node keypair when using it for handshake initiation
