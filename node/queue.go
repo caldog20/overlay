@@ -1,12 +1,14 @@
 package node
 
 import (
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
-const BufferSize = 1500
+const BufferSize = 1600
 
 type InboundBuffer struct {
 	in     []byte       // Raw data from UDP Socket
@@ -28,7 +30,8 @@ type OutboundBuffer struct {
 var (
 	InboundBuffers  = sync.Pool{New: NewInboundBuffer}
 	OutboundBuffers = sync.Pool{New: NewOutboundBuffer}
-	BufferSwaps     atomic.Uint64
+	IBuffersInUse   atomic.Uint64
+	OBuffersInUse   atomic.Uint64
 )
 
 func NewInboundBuffer() interface{} {
@@ -45,7 +48,7 @@ func NewInboundBuffer() interface{} {
 }
 
 func GetInboundBuffer() *InboundBuffer {
-	BufferSwaps.Add(1)
+	IBuffersInUse.Add(1)
 	return InboundBuffers.Get().(*InboundBuffer)
 }
 
@@ -58,9 +61,7 @@ func PutInboundBuffer(buffer *InboundBuffer) {
 	buffer.peer = nil
 
 	InboundBuffers.Put(buffer)
-
-	n := BufferSwaps.Load()
-	BufferSwaps.Store(n - 1)
+	IBuffersInUse.Add(^uint64(0))
 }
 
 func NewOutboundBuffer() interface{} {
@@ -76,7 +77,7 @@ func NewOutboundBuffer() interface{} {
 }
 
 func GetOutboundBuffer() *OutboundBuffer {
-	BufferSwaps.Add(1)
+	OBuffersInUse.Add(1)
 	return OutboundBuffers.Get().(*OutboundBuffer)
 }
 
@@ -88,7 +89,13 @@ func PutOutboundBuffer(buffer *OutboundBuffer) {
 	buffer.header.Reset()
 
 	OutboundBuffers.Put(buffer)
-	n := BufferSwaps.Load()
-	BufferSwaps.Store(n - 1)
+	OBuffersInUse.Add(^uint64(0))
+}
 
+func ReportBuffers() {
+	for {
+		log.Printf("Inbound Buffers in use: %d", IBuffersInUse.Load())
+		log.Printf("Outbound Buffers in use: %d", OBuffersInUse.Load())
+		time.Sleep(time.Millisecond * 250)
+	}
 }

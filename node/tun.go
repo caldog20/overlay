@@ -41,6 +41,7 @@ func (t *Tun) ReadPackets(callback OnTunnelPacket) {
 		buffer := GetOutboundBuffer()
 		n, err := t.Read(buffer.packet)
 		if err != nil {
+			// TODO Panic is temporary
 			panic(err)
 			t.Close()
 			PutOutboundBuffer(buffer)
@@ -69,7 +70,7 @@ func (tun *Tun) ConfigureInterface(ip netip.Addr) error {
 			log.Fatalf("route add error: %v", err)
 		}
 	case "darwin":
-		if err := exec.Command("/sbin/ifconfig", tun.Name(), "mtu", "1300", ip.String(), ip.String(), "up").Run(); err != nil {
+		if err := exec.Command("/sbin/ifconfig", tun.Name(), "mtu", "1400", ip.String(), ip.String(), "up").Run(); err != nil {
 			return fmt.Errorf("ifconfig error %v: %w", tun.Name(), err)
 		}
 		if err := exec.Command("/sbin/route", "-n", "add", "-net", net.String(), ip.String()).Run(); err != nil {
