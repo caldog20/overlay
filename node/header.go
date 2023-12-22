@@ -16,10 +16,11 @@ const (
 const (
 	None      uint8 = 0
 	Handshake uint8 = 1
-	Data      uint8 = 3
-	Close     uint8 = 4
-	Reset     uint8 = 5
-	Punch     uint8 = 6
+	Data      uint8 = 2
+	Reset     uint8 = 3 // Redundant?
+	Rekey     uint8 = 4
+	Close     uint8 = 5
+	Punch     uint8 = 0xff
 )
 
 type Header struct {

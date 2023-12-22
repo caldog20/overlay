@@ -3,28 +3,31 @@
 local goverlay_proto = Proto("goverlay","Goverlay Protocol")
 
 local types = {
-    [0] = "Invalid",
-    [1] = "Data",
-    [2] = "Control",
-    [3] = "Test",
-    [4] = "Handshake"
+    [0] = "None",
+    [1] = "Handshake",
+    [2] = "Data",
+    [3] = "Reset",
+    [4] = "Rekey",
+    [5] = "Close",
+    [255] = "Punch",
 }
 
-local subtypes = {
-    [0] = "None",
-    [1] = "Protobuf",
-    [2] = "Request",
-    [3] = "Reply",
-    [4] = "Keepalive"
-}
+--local subtypes = {
+--    [0] = "None",
+--    [1] = "Protobuf",
+--    [2] = "Request",
+--    [3] = "Reply",
+--    [4] = "Keepalive"
+--}
 -- protocol fields
 local pf_version = ProtoField.new("Version", "goverlay.version", ftypes.UINT8)
 local pf_type = ProtoField.new("Message Type", "goverlay.type", ftypes.UINT8, types)
-local pf_subtype = ProtoField.new("Message SubType", "goverlay.subtype", ftypes.UINT8, subtypes)
-local pf_reserved = ProtoField.new("Reserved", "goverlay.reserved", ftypes.UINT8, nil, base.HEX)
+local pf_index = ProtoField.new("SenderIndex", "goverlay.index", ftypes.UINT32)
+local pf_counter = ProtoField.new("Message Counter", "goverlay.counter", ftypes.UINT64)
+local pf_reserved = ProtoField.new("Reserved", "goverlay.reserved", ftypes.UINT16, nil, base.HEX)
 
 -- register protofields
-goverlay_proto.fields = {pf_version, pf_type, pf_subtype, pf_reserved}
+goverlay_proto.fields = {pf_version, pf_type, pf_index, pf_counter, pf_reserved}
 
 -- field to pull type info for checking payload
 local t = Field.new("goverlay.type")
@@ -56,18 +59,20 @@ function goverlay_proto.dissector(buffer,pinfo,tree)
 
     root:add(pf_version, buffer:range(0, 1))
     root:add(pf_type, buffer:range(1, 1))
-    root:add(pf_subtype, buffer:range(2,1))
-    root:add(pf_reserved, buffer:range(3,1))
+    root:add(pf_index, buffer:range(2, 4))
+    root:add(pf_counter, buffer:range(6, 8))
+    root:add(pf_reserved, buffer:range(14, 2))
 
-    local payload_range = buffer:range(4)
+    local payload_range = buffer:range(16)
     local payload_tree = root:add("Payload:")
-    if isData() then
-        local ip_dissector = Dissector.get("ip")
-        ip_dissector:call(buffer(4):tvb(), pinfo, payload_tree)
-        pinfo.cols.protocol:set("GOVERLAY")
-    else
-        payload_tree:add("Control Message Payload: " .. payload_range)
-    end
+    payload_tree:add("CipherText: " .. payload_range)
+    --if isData() then
+    --    local ip_dissector = Dissector.get("ip")
+    --    ip_dissector:call(buffer(4):tvb(), pinfo, payload_tree)
+    --    pinfo.cols.protocol:set("GOVERLAY")
+    --else
+    --    payload_tree:add("Control Message Payload: " .. payload_range)
+    --end
 
     -- local subtree = :add(goverlay_proto,buffer(),"Goverlay Protocol Data")
     -- subtree:add(buffer(0,1), "Version: " .. buffer(0,1))
