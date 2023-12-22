@@ -28,3 +28,5 @@ and ensure state is fresh
 - validate use of atomics/locks and refactor placement and usage 
 - maybe implement lock for noise state separately instead of for entire peer
 - figure out a way to stop peers properly if needed outside of runtime quit
+- eventually figure out how to manage noise cipherstate pairs and rekeying
+- track nonces for out of order packets?
