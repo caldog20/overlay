@@ -41,7 +41,6 @@ type Peer struct {
 
 	inbound    chan *InboundBuffer
 	outbound   chan *OutboundBuffer
-	pending    chan *OutboundBuffer
 	handshakes chan *InboundBuffer
 
 	running     atomic.Bool
@@ -56,10 +55,9 @@ func NewPeer() *Peer {
 	peer := new(Peer)
 
 	// channels
-	peer.inbound = make(chan *InboundBuffer, 64)
-	peer.outbound = make(chan *OutboundBuffer, 64)
-	peer.pending = make(chan *OutboundBuffer, 16)  // 16 pending packets???
-	peer.handshakes = make(chan *InboundBuffer, 2) // Handshake packet buffering???
+	peer.inbound = make(chan *InboundBuffer, 16)   // buffered number???
+	peer.outbound = make(chan *OutboundBuffer, 16) // allow up to 16 packets to be cached/pending handshake???
+	peer.handshakes = make(chan *InboundBuffer, 3) // Handshake packet buffering???
 
 	peer.timers.handshakeSent = time.NewTimer(time.Second * 3)
 	peer.timers.handshakeSent.Stop()
@@ -168,7 +166,6 @@ func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
 	case peer.outbound <- buffer:
 	default:
 		log.Printf("peer id %d: outbound channel full", peer.Id)
-		return
 	}
 
 	if !peer.inTransport.Load() {
@@ -188,10 +185,9 @@ func (peer *Peer) ResetState() {
 }
 
 func (peer *Peer) InitHandshake(initiator bool) error {
-	//if !locked {
-	//	peer.mu.Lock()
-	//	defer peer.mu.Unlock()
-	//}
+	// Lock here incase something is changing with the nodes keys
+	peer.node.noise.l.RLock()
+	defer peer.node.noise.l.RUnlock()
 
 	peer.noise.initiator = initiator
 
@@ -204,6 +200,7 @@ func (peer *Peer) InitHandshake(initiator bool) error {
 	return nil
 }
 
+// TODO Fix these in the case channel is never closed
 func (peer *Peer) flushInboundQueue() {
 LOOP:
 	for {
@@ -249,20 +246,20 @@ LOOP:
 	}
 }
 
-func (peer *Peer) flushPendingQueue() {
-LOOP:
-	for {
-		select {
-		case b, ok := <-peer.pending:
-			if !ok {
-				break LOOP
-			}
-			PutOutboundBuffer(b)
-		default:
-			break LOOP
-		}
-	}
-}
+//func (peer *Peer) flushPendingQueue() {
+//LOOP:
+//	for {
+//		select {
+//		case b, ok := <-peer.pending:
+//			if !ok {
+//				break LOOP
+//			}
+//			PutOutboundBuffer(b)
+//		default:
+//			break LOOP
+//		}
+//	}
+//}
 
 func (peer *Peer) flushQueues() {
 	peer.flushHandshakeQueue()

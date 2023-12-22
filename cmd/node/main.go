@@ -42,10 +42,12 @@ func main() {
 		cancel()
 	}()
 
-	node, err := node.NewNode("5555", "http://10.170.241.1:8080")
+	//go node.ReportBuffers()
+
+	localNode, err := node.NewNode("5555", "http://10.170.241.1:8080")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node.Run(ctx)
+	localNode.Run(ctx)
 }

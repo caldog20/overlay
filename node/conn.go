@@ -58,6 +58,7 @@ func (conn *Conn) ReadPackets(callback OnUDPPacket, index int) {
 		buffer := GetInboundBuffer()
 		n, raddr, err := conn.ReadFromUDP(buffer.in)
 		if err != nil {
+			// TODO Panic is temporary
 			panic(err)
 			PutInboundBuffer(buffer)
 			conn.Close()

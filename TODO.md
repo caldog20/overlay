@@ -18,3 +18,13 @@ I'm rambling now.. ^.^
 
 - Change peers to start when added
 - Lock node keypair when using it for handshake initiation
+
+
+- Implement peer timers for send/recv packets and timout/dead peer detection
+- possibly allow optional keepalives that are tunable 
+- after a certain dead period, flush all queues, reset peer state properly to await outbound/inbound packet 
+and ensure state is fresh
+
+- validate use of atomics/locks and refactor placement and usage 
+- maybe implement lock for noise state separately instead of for entire peer
+- figure out a way to stop peers properly if needed outside of runtime quit
