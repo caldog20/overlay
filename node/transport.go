@@ -29,8 +29,17 @@ func (peer *Peer) Inbound() {
 			peer.pendingLock.RUnlock()
 			continue
 		}
+
 		peer.pendingLock.RUnlock()
-		peer.node.tun.Write(buffer.packet)
+
+		peer.timers.receivedPacket.Reset(TimerRxTimeout)
+
+		if len(buffer.packet) > 0 {
+			peer.node.tun.Write(buffer.packet)
+		}
+		//else {
+		//log.Println("KEEPALIVE RECEIVED")
+		//}
 		// TODO Fix remote address roaming updates
 		//if !peer.raddr.IP.Equal(buffer.raddr.IP) {
 		//	peer.mu.Lock()
@@ -52,6 +61,11 @@ func (peer *Peer) Outbound() {
 			peer.pendingLock.RUnlock()
 			continue
 		}
+
+		peer.timers.keepalive.Reset(TimerKeepalive)
+		//peer.timers.sentPacket.Stop()
+		//peer.timers.sentPacket.Reset(TimerKeepalive)
+
 		peer.pendingLock.RUnlock()
 		peer.node.conn.WriteToUdp(out, peer.raddr)
 		//log.Printf("Sent data to %s - len: %d", p.remote.String(), elem.size)
@@ -90,7 +104,7 @@ func (peer *Peer) Handshake() {
 	for {
 		select {
 		case hs := <-peer.handshakes:
-			log.Printf("peer %d received handshake message", peer.Id)
+			log.Printf("peer %d - received handshake message - remote: %s", peer.Id, peer.raddr.String())
 			// received handshake inbound, process
 			state := peer.noise.state.Load()
 			switch state {
@@ -107,6 +121,7 @@ func (peer *Peer) Handshake() {
 				peer.pendingLock.Unlock()
 				peer.counters.handshakeRetries.Store(0)
 				peer.timers.handshakeSent.Stop()
+				peer.timers.keepalive.Reset(TimerKeepalive + time.Second*5)
 				// Handshake finished
 			case 1: // receiving handshake response as initiator
 				if hs.header.Counter != 1 {
@@ -121,6 +136,7 @@ func (peer *Peer) Handshake() {
 				peer.pendingLock.Unlock()
 				peer.timers.handshakeSent.Stop()
 				peer.counters.handshakeRetries.Store(0)
+				peer.timers.keepalive.Reset(TimerKeepalive)
 			// Handshake finished
 			case 2: // Receiving new handshake from peer, lock and consume handshake initiation
 				peer.pendingLock.Lock()
@@ -133,6 +149,8 @@ func (peer *Peer) Handshake() {
 				peer.pendingLock.Unlock()
 				peer.timers.handshakeSent.Stop()
 				peer.counters.handshakeRetries.Store(0)
+				peer.timers.keepalive.Reset(TimerKeepalive)
+				peer.timers.receivedPacket.Reset(TimerRxTimeout)
 			default:
 				panic("out of sequence handshake message received")
 			}
@@ -180,7 +198,7 @@ func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 	peer.noise.state.Store(1)
 	peer.node.conn.WriteToUdp(final, peer.raddr)
 	PutOutboundBuffer(buffer)
-	log.Printf("sending p1 to peer %s", peer.raddr.String())
+	log.Printf("peer %d - sent handshake message - remote: %s", peer.Id, peer.raddr.String())
 }
 
 // TODO Refactor this
@@ -189,7 +207,6 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 	defer peer.mu.Unlock()
 
 	var err error
-	log.Printf("received handshake message from peer %s", peer.raddr.String())
 	if peer.noise.initiator {
 		_, peer.noise.tx, peer.noise.rx, err = peer.noise.hs.ReadMessage(nil, buffer.in[HeaderLen:buffer.size])
 		if err != nil {
@@ -234,10 +251,23 @@ func (peer *Peer) HandshakeTimeout() {
 	}
 }
 
+func (peer *Peer) TXTimeout() {
+	if len(peer.outbound) == 0 {
+		// Queue up empty packet
+		buffer := GetOutboundBuffer()
+		buffer.peer = peer
+		peer.outbound <- buffer
+	}
+}
+
 func (peer *Peer) RXTimeout() {
+	log.Println("RX TIMEOUT")
 	if !peer.inTransport.Load() {
 		return
 	}
+
+	peer.timers.keepalive.Stop()
+	peer.timers.receivedPacket.Stop()
 
 	peer.pendingLock.Lock()
 	peer.noise.state.Store(0)

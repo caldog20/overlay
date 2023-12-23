@@ -30,3 +30,6 @@ and ensure state is fresh
 - figure out a way to stop peers properly if needed outside of runtime quit
 - eventually figure out how to manage noise cipherstate pairs and rekeying
 - track nonces for out of order packets?
+
+TODO: Fix restarting keepalive timer when responder is completing handshake. 
+Wait until first successful encrypted packet is received to ensure handshake is proper before restarting TX/keepalive timer

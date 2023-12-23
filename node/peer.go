@@ -18,8 +18,8 @@ import (
 const (
 	// Timers
 	TimerHandshakeTimeout = time.Second * 5
-	TimerPacketTraversal  = time.Second * 10
-
+	TimerRxTimeout        = time.Second * 20
+	TimerKeepalive        = time.Second * 10
 	// Counts
 	CountHandshakeRetries = 3
 )
@@ -47,6 +47,8 @@ type Peer struct {
 	timers struct {
 		handshakeSent  *time.Timer
 		receivedPacket *time.Timer
+		keepalive      *time.Timer
+		//sentPacket *time.Timer
 	}
 
 	counters struct {
@@ -76,8 +78,14 @@ func NewPeer() *Peer {
 	peer.timers.handshakeSent = time.AfterFunc(TimerHandshakeTimeout, peer.HandshakeTimeout)
 	peer.timers.handshakeSent.Stop()
 
-	peer.timers.receivedPacket = time.AfterFunc(TimerPacketTraversal, peer.RXTimeout)
+	peer.timers.receivedPacket = time.AfterFunc(TimerRxTimeout, peer.RXTimeout)
 	peer.timers.receivedPacket.Stop()
+
+	peer.timers.keepalive = time.AfterFunc(TimerKeepalive, peer.TXTimeout)
+	peer.timers.keepalive.Stop()
+	//
+	//peer.timers.sentPacket = time.NewTimer(TimerKeepalive)
+	//peer.timers.sentPacket.Stop()
 
 	peer.wg = sync.WaitGroup{}
 
@@ -166,7 +174,6 @@ func (peer *Peer) InboundPacket(buffer *InboundBuffer) {
 	}
 
 	//peer.timers.receivedPacket.Stop()
-	peer.timers.receivedPacket.Reset(TimerPacketTraversal)
 
 	select {
 	case peer.inbound <- buffer:
@@ -201,6 +208,7 @@ func (peer *Peer) ResetState() {
 
 	peer.counters.handshakeRetries.Store(0)
 	peer.timers.receivedPacket.Stop()
+	peer.timers.keepalive.Stop()
 
 	peer.flushQueues()
 	peer.noise.hs = nil
