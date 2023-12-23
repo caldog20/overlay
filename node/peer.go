@@ -15,6 +15,15 @@ import (
 	"github.com/flynn/noise"
 )
 
+const (
+	// Timers
+	TimerHandshakeTimeout = time.Second * 5
+	TimerPacketTraversal  = time.Second * 10
+
+	// Counts
+	CountHandshakeRetries = 3
+)
+
 type Peer struct {
 	mu          sync.RWMutex
 	pendingLock sync.RWMutex
@@ -36,7 +45,12 @@ type Peer struct {
 	}
 
 	timers struct {
-		handshakeSent *time.Timer
+		handshakeSent  *time.Timer
+		receivedPacket *time.Timer
+	}
+
+	counters struct {
+		handshakeRetries atomic.Uint64
 	}
 
 	inbound    chan *InboundBuffer
@@ -59,8 +73,11 @@ func NewPeer() *Peer {
 	peer.outbound = make(chan *OutboundBuffer, 16) // allow up to 16 packets to be cached/pending handshake???
 	peer.handshakes = make(chan *InboundBuffer, 3) // Handshake packet buffering???
 
-	peer.timers.handshakeSent = time.NewTimer(time.Second * 3)
+	peer.timers.handshakeSent = time.AfterFunc(TimerHandshakeTimeout, peer.HandshakeTimeout)
 	peer.timers.handshakeSent.Stop()
+
+	peer.timers.receivedPacket = time.AfterFunc(TimerPacketTraversal, peer.RXTimeout)
+	peer.timers.receivedPacket.Stop()
 
 	peer.wg = sync.WaitGroup{}
 
@@ -148,6 +165,9 @@ func (peer *Peer) InboundPacket(buffer *InboundBuffer) {
 		return
 	}
 
+	//peer.timers.receivedPacket.Stop()
+	peer.timers.receivedPacket.Reset(TimerPacketTraversal)
+
 	select {
 	case peer.inbound <- buffer:
 	default:
@@ -168,20 +188,28 @@ func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
 		log.Printf("peer id %d: outbound channel full", peer.Id)
 	}
 
-	if !peer.inTransport.Load() {
-		peer.TrySendHandshake()
+	if !peer.inTransport.Load() && peer.noise.state.Load() == 0 {
+		peer.TrySendHandshake(false)
 	}
 }
 
 func (peer *Peer) ResetState() {
+	peer.running.Store(false)
+
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	peer.counters.handshakeRetries.Store(0)
+	peer.timers.receivedPacket.Stop()
+
 	peer.flushQueues()
 	peer.noise.hs = nil
 	peer.noise.rx = nil
 	peer.noise.tx = nil
+	peer.noise.initiator = false
 	peer.noise.state.Store(0)
 	peer.inTransport.Store(false)
-	peer.running.Store(false)
-	//peer.pendingLock.Unlock()
+	peer.running.Store(true)
 }
 
 func (peer *Peer) InitHandshake(initiator bool) error {

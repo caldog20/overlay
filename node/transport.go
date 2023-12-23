@@ -59,16 +59,20 @@ func (peer *Peer) Outbound() {
 	}
 }
 
-func (peer *Peer) TrySendHandshake() {
+func (peer *Peer) TrySendHandshake(retry bool) {
+	peer.counters.handshakeRetries.Add(1)
+
 	// TODO validate placement of lock here
-	if peer.noise.state.Load() > 0 {
-		select {
-		// Handshake response not received, send another handshake
-		case <-peer.timers.handshakeSent.C:
-			log.Printf("peer %d handshake response never receieved, resending", peer.Id)
-		default:
+	if retry {
+		attempts := peer.counters.handshakeRetries.Load()
+		if attempts > CountHandshakeRetries {
+			// Peer never responded to handshakes, so flush all queues, and reset state
+			log.Println("peer handshake retries exceeded, resetting peer state to idle")
+			peer.timers.handshakeSent.Stop()
+			peer.ResetState()
 			return
 		}
+		log.Printf("retrying handshake attempt %d", peer.counters.handshakeRetries.Load())
 	}
 
 	peer.mu.Lock()
@@ -82,7 +86,7 @@ func (peer *Peer) TrySendHandshake() {
 
 func (peer *Peer) Handshake() {
 	//log.Print("starting handshake routine")
-
+	// TODO handshake completion function
 	for {
 		select {
 		case hs := <-peer.handshakes:
@@ -101,6 +105,8 @@ func (peer *Peer) Handshake() {
 				peer.noise.state.Store(2)
 				peer.inTransport.Store(true)
 				peer.pendingLock.Unlock()
+				peer.counters.handshakeRetries.Store(0)
+				peer.timers.handshakeSent.Stop()
 				// Handshake finished
 			case 1: // receiving handshake response as initiator
 				if hs.header.Counter != 1 {
@@ -113,6 +119,8 @@ func (peer *Peer) Handshake() {
 				peer.noise.state.Store(2)
 				peer.inTransport.Store(true)
 				peer.pendingLock.Unlock()
+				peer.timers.handshakeSent.Stop()
+				peer.counters.handshakeRetries.Store(0)
 			// Handshake finished
 			case 2: // Receiving new handshake from peer, lock and consume handshake initiation
 				peer.pendingLock.Lock()
@@ -123,6 +131,8 @@ func (peer *Peer) Handshake() {
 				peer.noise.state.Store(2)
 				peer.inTransport.Store(true)
 				peer.pendingLock.Unlock()
+				peer.timers.handshakeSent.Stop()
+				peer.counters.handshakeRetries.Store(0)
 			default:
 				panic("out of sequence handshake message received")
 			}
@@ -214,4 +224,35 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 
 	PutInboundBuffer(buffer)
 	return nil
+}
+
+func (peer *Peer) HandshakeTimeout() {
+	if peer.noise.state.Load() > 0 {
+		// Handshake response not received, send another handshake
+		log.Printf("peer %d handshake response timeout", peer.Id)
+		peer.TrySendHandshake(true)
+	}
+}
+
+func (peer *Peer) RXTimeout() {
+	if !peer.inTransport.Load() {
+		return
+	}
+
+	peer.pendingLock.Lock()
+	peer.noise.state.Store(0)
+
+	// TODO Fix this
+	peer.mu.RLock()
+	initiator := peer.noise.initiator
+	peer.mu.RUnlock()
+	if !initiator {
+		log.Println("RX Timeout but not initiator, resetting peer state")
+		peer.timers.receivedPacket.Stop()
+		peer.timers.handshakeSent.Stop()
+		peer.ResetState()
+		return
+	}
+
+	peer.TrySendHandshake(true)
 }
