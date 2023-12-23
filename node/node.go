@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
@@ -83,14 +84,16 @@ func (node *Node) TempAddrDiscovery() (string, error) {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8675309)
 
-	addr, _, _ := net.SplitHostPort(node.controllerAddr)
-	raddr, _ := net.ResolveUDPAddr(UdpType, addr)
+	addr, _, _ := net.SplitHostPort(node.controllerAddr[7:])
+	raddr, _ := net.ResolveUDPAddr(UdpType, addr+":7979")
 
 	node.conn.WriteToUdp(b, raddr)
-	rx := make([]byte, 64)
-	node.conn.ReadFromUDP(rx)
-	log.Println(string(rx))
-	panic("")
+	rx := make([]byte, 256)
+	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 3))
+	n, _, _ := node.conn.ReadFromUDP(rx)
+	test := netip.MustParseAddrPort(string(rx[:n]))
+	node.conn.uc.SetReadDeadline(time.Time{})
+	return test.String(), nil
 }
 
 func (node *Node) Run(ctx context.Context) {
