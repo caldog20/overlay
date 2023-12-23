@@ -84,6 +84,8 @@ func (c *Controller) RunController(ctx context.Context, port string) {
 
 	e.Any("/twirp*", echo.WrapHandler(handler))
 
+	go c.DiscoveryServer()
+
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", port)))
 }
 
