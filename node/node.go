@@ -2,14 +2,11 @@ package node
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"log"
 	"net/http"
 	"net/netip"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -92,6 +89,7 @@ func (node *Node) Run(ctx context.Context) {
 		log.Fatal(err)
 	}
 
+	go node.CheckPunches()
 	go node.conn.ReadPackets(node.OnUdpPacket, 0)
 	go node.tun.ReadPackets(node.OnTunnelPacket)
 
@@ -103,59 +101,6 @@ func (node *Node) Run(ctx context.Context) {
 	//		peer.cancel()
 	//	}
 	//}
-}
-
-func (node *Node) Register() error {
-	hn, _ := os.Hostname()
-	hostname := strings.Split(hn, ".")[0]
-
-	registration, err := node.controller.Register(context.Background(), &proto.RegisterRequest{
-		Key:      base64.StdEncoding.EncodeToString(node.noise.keyPair.Public),
-		Hostname: hostname,
-	})
-
-	if err != nil {
-		return errors.New("error registering with controller")
-	}
-
-	node.id = registration.Id
-	node.ip = netip.MustParseAddr(registration.Ip)
-
-	return nil
-}
-
-func (node *Node) UpdateNodes() error {
-	resp, err := node.controller.NodeList(context.Background(), &proto.NodeListRequest{Id: node.id})
-	if err != nil {
-		panic(err)
-	}
-
-	var new []*proto.Node
-
-	node.maps.l.RLock()
-	for _, n := range resp.Nodes {
-		_, ok := node.maps.id[n.Id]
-		if !ok {
-			new = append(new, n)
-		}
-	}
-	node.maps.l.RUnlock()
-
-	if len(new) > 0 {
-		for _, n := range new {
-			p, err := node.AddPeer(n)
-			if err != nil {
-				panic(err)
-			}
-			err = p.Start()
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-
-	log.Println("Update nodes complete")
-	return nil
 }
 
 func (node *Node) OnUdpPacket(buffer *InboundBuffer, index int) {

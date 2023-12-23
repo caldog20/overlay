@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -28,6 +29,11 @@ type Controller struct {
 		changes []uint32
 		deletes []uint32
 	}
+
+	punches struct {
+		mu      sync.RWMutex
+		pending map[uint32]string
+	}
 }
 
 func WithRemoteAddr(base http.Handler) http.Handler {
@@ -46,6 +52,9 @@ func NewController() *Controller {
 	c.db = NewDB()
 	c.ipam = make(map[netip.Addr]struct{})
 	c.ipCount.Store(1)
+
+	c.punches.pending = make(map[uint32]string)
+
 	return c
 }
 
@@ -197,6 +206,59 @@ func (c *Controller) NodeQuery(ctx context.Context, req *proto.NodeQueryRequest)
 
 	return resp, nil
 
+}
+
+func (c *Controller) PunchRequester(ctx context.Context, req *proto.PunchRequest) (*proto.PunchReply, error) {
+	if req.ReqId == 0 {
+		return nil, twirp.InvalidArgumentError("id", "id must not be zero")
+	}
+	requestor, err := c.db.GetNodeByID(req.ReqId)
+	if err != nil {
+		return nil, twirp.InternalError("requesting node not found")
+	}
+
+	puncher, err := c.db.GetNodeByID(req.RemoteId)
+	if err != nil {
+		return nil, twirp.InternalError("remote node not found")
+	}
+
+	remote := requestor.EndPoint.String()
+
+	c.punches.mu.Lock()
+	defer c.punches.mu.Unlock()
+
+	c.punches.pending[puncher.ID] = remote
+
+	return &proto.PunchReply{
+		Status: true,
+	}, nil
+
+}
+
+func (c *Controller) PunchChecker(ctx context.Context, req *proto.PunchCheck) (*proto.Punch, error) {
+	if req.ReqId == 0 {
+		return nil, twirp.InvalidArgumentError("id", "id must not be zero")
+	}
+	_, err := c.db.GetNodeByID(req.ReqId)
+	if err != nil {
+		return nil, twirp.InternalError("requesting node not found")
+	}
+
+	c.punches.mu.RLock()
+	remote, found := c.punches.pending[req.ReqId]
+	c.punches.mu.RUnlock()
+
+	if !found {
+		return nil, twirp.NotFoundError("pending punch for requesting ID not found")
+	}
+
+	c.punches.mu.Lock()
+	defer c.punches.mu.Unlock()
+	delete(c.punches.pending, req.ReqId)
+
+	return &proto.Punch{
+		Remote: remote,
+	}, nil
 }
 
 func (c *Controller) NewNode(key string, hostname string, raddr netip.AddrPort) *Node {

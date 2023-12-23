@@ -73,11 +73,18 @@ func (peer *Peer) Outbound() {
 	}
 }
 
+func (peer *Peer) RequestPunch() {
+	peer.mu.RLock()
+	defer peer.mu.RUnlock()
+	peer.node.RequestPunch(peer.Id)
+}
+
 func (peer *Peer) TrySendHandshake(retry bool) {
 	peer.counters.handshakeRetries.Add(1)
 
 	// TODO validate placement of lock here
 	if retry {
+		peer.RequestPunch()
 		attempts := peer.counters.handshakeRetries.Load()
 		if attempts > CountHandshakeRetries {
 			// Peer never responded to handshakes, so flush all queues, and reset state

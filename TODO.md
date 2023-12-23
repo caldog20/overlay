@@ -37,3 +37,4 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 
 - Punching when not receiving handshake message, maybe another timer triggered after first attempt shorter than handshake timeout
 - For now, request punch on each handshake attempt whether I like it or not
+- Eventually support ipv6 inside and outside the tunnel

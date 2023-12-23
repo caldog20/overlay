@@ -9,6 +9,8 @@ service Controller {
   //  rpc GetUpdate(UpdateRequest) returns (UpdateResponse);
   rpc NodeList(NodeListRequest) returns (NodeListResponse);
   rpc NodeQuery(NodeQueryRequest) returns (Node);
+  rpc PunchRequester(PunchRequest) returns (PunchReply);
+  rpc PunchChecker(PunchCheck) returns (Punch);
 }
 
 
@@ -46,6 +48,23 @@ message NodeQueryRequest {
   uint32 req_id = 1;
   optional uint32 node_id = 2;
   optional string node_ip = 3;
+}
+
+message PunchRequest {
+  uint32 req_id = 1;
+  uint32 remote_id = 2;
+}
+
+message PunchReply {
+  bool status = 1;
+}
+
+message Punch {
+  string remote = 1;
+}
+
+message PunchCheck {
+  uint32 req_id = 1;
 }
 
 //enum UpdateType {

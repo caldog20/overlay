@@ -39,6 +39,10 @@ type Controller interface {
 	NodeList(context.Context, *NodeListRequest) (*NodeListResponse, error)
 
 	NodeQuery(context.Context, *NodeQueryRequest) (*Node, error)
+
+	PunchRequester(context.Context, *PunchRequest) (*PunchReply, error)
+
+	PunchChecker(context.Context, *PunchCheck) (*Punch, error)
 }
 
 // ==========================
@@ -47,7 +51,7 @@ type Controller interface {
 
 type controllerProtobufClient struct {
 	client      HTTPClient
-	urls        [3]string
+	urls        [5]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -75,10 +79,12 @@ func NewControllerProtobufClient(baseURL string, client HTTPClient, opts ...twir
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(pathPrefix, "proto", "Controller")
-	urls := [3]string{
+	urls := [5]string{
 		serviceURL + "Register",
 		serviceURL + "NodeList",
 		serviceURL + "NodeQuery",
+		serviceURL + "PunchRequester",
+		serviceURL + "PunchChecker",
 	}
 
 	return &controllerProtobufClient{
@@ -227,13 +233,105 @@ func (c *controllerProtobufClient) callNodeQuery(ctx context.Context, in *NodeQu
 	return out, nil
 }
 
+func (c *controllerProtobufClient) PunchRequester(ctx context.Context, in *PunchRequest) (*PunchReply, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "proto")
+	ctx = ctxsetters.WithServiceName(ctx, "Controller")
+	ctx = ctxsetters.WithMethodName(ctx, "PunchRequester")
+	caller := c.callPunchRequester
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *PunchRequest) (*PunchReply, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchRequest) when calling interceptor")
+					}
+					return c.callPunchRequester(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*PunchReply)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*PunchReply) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *controllerProtobufClient) callPunchRequester(ctx context.Context, in *PunchRequest) (*PunchReply, error) {
+	out := new(PunchReply)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *controllerProtobufClient) PunchChecker(ctx context.Context, in *PunchCheck) (*Punch, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "proto")
+	ctx = ctxsetters.WithServiceName(ctx, "Controller")
+	ctx = ctxsetters.WithMethodName(ctx, "PunchChecker")
+	caller := c.callPunchChecker
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *PunchCheck) (*Punch, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchCheck)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchCheck) when calling interceptor")
+					}
+					return c.callPunchChecker(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Punch)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Punch) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *controllerProtobufClient) callPunchChecker(ctx context.Context, in *PunchCheck) (*Punch, error) {
+	out := new(Punch)
+	ctx, err := doProtobufRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // ======================
 // Controller JSON Client
 // ======================
 
 type controllerJSONClient struct {
 	client      HTTPClient
-	urls        [3]string
+	urls        [5]string
 	interceptor twirp.Interceptor
 	opts        twirp.ClientOptions
 }
@@ -261,10 +359,12 @@ func NewControllerJSONClient(baseURL string, client HTTPClient, opts ...twirp.Cl
 	// Build method URLs: <baseURL>[<prefix>]/<package>.<Service>/<Method>
 	serviceURL := sanitizeBaseURL(baseURL)
 	serviceURL += baseServicePath(pathPrefix, "proto", "Controller")
-	urls := [3]string{
+	urls := [5]string{
 		serviceURL + "Register",
 		serviceURL + "NodeList",
 		serviceURL + "NodeQuery",
+		serviceURL + "PunchRequester",
+		serviceURL + "PunchChecker",
 	}
 
 	return &controllerJSONClient{
@@ -413,6 +513,98 @@ func (c *controllerJSONClient) callNodeQuery(ctx context.Context, in *NodeQueryR
 	return out, nil
 }
 
+func (c *controllerJSONClient) PunchRequester(ctx context.Context, in *PunchRequest) (*PunchReply, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "proto")
+	ctx = ctxsetters.WithServiceName(ctx, "Controller")
+	ctx = ctxsetters.WithMethodName(ctx, "PunchRequester")
+	caller := c.callPunchRequester
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *PunchRequest) (*PunchReply, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchRequest) when calling interceptor")
+					}
+					return c.callPunchRequester(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*PunchReply)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*PunchReply) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *controllerJSONClient) callPunchRequester(ctx context.Context, in *PunchRequest) (*PunchReply, error) {
+	out := new(PunchReply)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[3], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
+func (c *controllerJSONClient) PunchChecker(ctx context.Context, in *PunchCheck) (*Punch, error) {
+	ctx = ctxsetters.WithPackageName(ctx, "proto")
+	ctx = ctxsetters.WithServiceName(ctx, "Controller")
+	ctx = ctxsetters.WithMethodName(ctx, "PunchChecker")
+	caller := c.callPunchChecker
+	if c.interceptor != nil {
+		caller = func(ctx context.Context, req *PunchCheck) (*Punch, error) {
+			resp, err := c.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchCheck)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchCheck) when calling interceptor")
+					}
+					return c.callPunchChecker(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Punch)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Punch) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+	return caller(ctx, in)
+}
+
+func (c *controllerJSONClient) callPunchChecker(ctx context.Context, in *PunchCheck) (*Punch, error) {
+	out := new(Punch)
+	ctx, err := doJSONRequest(ctx, c.client, c.opts.Hooks, c.urls[4], in, out)
+	if err != nil {
+		twerr, ok := err.(twirp.Error)
+		if !ok {
+			twerr = twirp.InternalErrorWith(err)
+		}
+		callClientError(ctx, c.opts.Hooks, twerr)
+		return nil, err
+	}
+
+	callClientResponseReceived(ctx, c.opts.Hooks)
+
+	return out, nil
+}
+
 // =========================
 // Controller Server Handler
 // =========================
@@ -518,6 +710,12 @@ func (s *controllerServer) ServeHTTP(resp http.ResponseWriter, req *http.Request
 		return
 	case "NodeQuery":
 		s.serveNodeQuery(ctx, resp, req)
+		return
+	case "PunchRequester":
+		s.servePunchRequester(ctx, resp, req)
+		return
+	case "PunchChecker":
+		s.servePunchChecker(ctx, resp, req)
 		return
 	default:
 		msg := fmt.Sprintf("no handler for path %q", req.URL.Path)
@@ -1043,6 +1241,366 @@ func (s *controllerServer) serveNodeQueryProtobuf(ctx context.Context, resp http
 	}
 	if respContent == nil {
 		s.writeError(ctx, resp, twirp.InternalError("received a nil *Node and nil error while calling NodeQuery. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *controllerServer) servePunchRequester(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.servePunchRequesterJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.servePunchRequesterProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *controllerServer) servePunchRequesterJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "PunchRequester")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(PunchRequest)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.Controller.PunchRequester
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *PunchRequest) (*PunchReply, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchRequest) when calling interceptor")
+					}
+					return s.Controller.PunchRequester(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*PunchReply)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*PunchReply) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *PunchReply
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *PunchReply and nil error while calling PunchRequester. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: !s.jsonCamelCase, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *controllerServer) servePunchRequesterProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "PunchRequester")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := io.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(PunchRequest)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.Controller.PunchRequester
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *PunchRequest) (*PunchReply, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchRequest)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchRequest) when calling interceptor")
+					}
+					return s.Controller.PunchRequester(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*PunchReply)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*PunchReply) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *PunchReply
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *PunchReply and nil error while calling PunchRequester. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	respBytes, err := proto.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal proto response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/protobuf")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *controllerServer) servePunchChecker(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	header := req.Header.Get("Content-Type")
+	i := strings.Index(header, ";")
+	if i == -1 {
+		i = len(header)
+	}
+	switch strings.TrimSpace(strings.ToLower(header[:i])) {
+	case "application/json":
+		s.servePunchCheckerJSON(ctx, resp, req)
+	case "application/protobuf":
+		s.servePunchCheckerProtobuf(ctx, resp, req)
+	default:
+		msg := fmt.Sprintf("unexpected Content-Type: %q", req.Header.Get("Content-Type"))
+		twerr := badRouteError(msg, req.Method, req.URL.Path)
+		s.writeError(ctx, resp, twerr)
+	}
+}
+
+func (s *controllerServer) servePunchCheckerJSON(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "PunchChecker")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	d := json.NewDecoder(req.Body)
+	rawReqBody := json.RawMessage{}
+	if err := d.Decode(&rawReqBody); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+	reqContent := new(PunchCheck)
+	unmarshaler := protojson.UnmarshalOptions{DiscardUnknown: true}
+	if err = unmarshaler.Unmarshal(rawReqBody, reqContent); err != nil {
+		s.handleRequestBodyError(ctx, resp, "the json request could not be decoded", err)
+		return
+	}
+
+	handler := s.Controller.PunchChecker
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *PunchCheck) (*Punch, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchCheck)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchCheck) when calling interceptor")
+					}
+					return s.Controller.PunchChecker(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Punch)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Punch) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *Punch
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Punch and nil error while calling PunchChecker. nil responses are not supported"))
+		return
+	}
+
+	ctx = callResponsePrepared(ctx, s.hooks)
+
+	marshaler := &protojson.MarshalOptions{UseProtoNames: !s.jsonCamelCase, EmitUnpopulated: !s.jsonSkipDefaults}
+	respBytes, err := marshaler.Marshal(respContent)
+	if err != nil {
+		s.writeError(ctx, resp, wrapInternal(err, "failed to marshal json response"))
+		return
+	}
+
+	ctx = ctxsetters.WithStatusCode(ctx, http.StatusOK)
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Content-Length", strconv.Itoa(len(respBytes)))
+	resp.WriteHeader(http.StatusOK)
+
+	if n, err := resp.Write(respBytes); err != nil {
+		msg := fmt.Sprintf("failed to write response, %d of %d bytes written: %s", n, len(respBytes), err.Error())
+		twerr := twirp.NewError(twirp.Unknown, msg)
+		ctx = callError(ctx, s.hooks, twerr)
+	}
+	callResponseSent(ctx, s.hooks)
+}
+
+func (s *controllerServer) servePunchCheckerProtobuf(ctx context.Context, resp http.ResponseWriter, req *http.Request) {
+	var err error
+	ctx = ctxsetters.WithMethodName(ctx, "PunchChecker")
+	ctx, err = callRequestRouted(ctx, s.hooks)
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+
+	buf, err := io.ReadAll(req.Body)
+	if err != nil {
+		s.handleRequestBodyError(ctx, resp, "failed to read request body", err)
+		return
+	}
+	reqContent := new(PunchCheck)
+	if err = proto.Unmarshal(buf, reqContent); err != nil {
+		s.writeError(ctx, resp, malformedRequestError("the protobuf request could not be decoded"))
+		return
+	}
+
+	handler := s.Controller.PunchChecker
+	if s.interceptor != nil {
+		handler = func(ctx context.Context, req *PunchCheck) (*Punch, error) {
+			resp, err := s.interceptor(
+				func(ctx context.Context, req interface{}) (interface{}, error) {
+					typedReq, ok := req.(*PunchCheck)
+					if !ok {
+						return nil, twirp.InternalError("failed type assertion req.(*PunchCheck) when calling interceptor")
+					}
+					return s.Controller.PunchChecker(ctx, typedReq)
+				},
+			)(ctx, req)
+			if resp != nil {
+				typedResp, ok := resp.(*Punch)
+				if !ok {
+					return nil, twirp.InternalError("failed type assertion resp.(*Punch) when calling interceptor")
+				}
+				return typedResp, err
+			}
+			return nil, err
+		}
+	}
+
+	// Call service method
+	var respContent *Punch
+	func() {
+		defer ensurePanicResponses(ctx, resp, s.hooks)
+		respContent, err = handler(ctx, reqContent)
+	}()
+
+	if err != nil {
+		s.writeError(ctx, resp, err)
+		return
+	}
+	if respContent == nil {
+		s.writeError(ctx, resp, twirp.InternalError("received a nil *Punch and nil error while calling PunchChecker. nil responses are not supported"))
 		return
 	}
 
@@ -1647,29 +2205,35 @@ func callClientError(ctx context.Context, h *twirp.ClientHooks, err twirp.Error)
 }
 
 var twirpFileDescriptor0 = []byte{
-	// 379 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x51, 0xb1, 0x6e, 0xe2, 0x40,
-	0x10, 0xbd, 0x35, 0x98, 0x33, 0x83, 0x38, 0xd0, 0xea, 0xee, 0x62, 0xa1, 0x14, 0x60, 0x45, 0x11,
-	0x4d, 0x20, 0x71, 0x4a, 0x8a, 0x48, 0xa4, 0x01, 0x25, 0x8a, 0x14, 0x97, 0x69, 0x10, 0x78, 0x57,
-	0xc6, 0x8a, 0xf1, 0x2e, 0xeb, 0x75, 0x24, 0x8a, 0xf4, 0xfc, 0x52, 0xfe, 0x2e, 0x5a, 0x7b, 0x6d,
-	0x0c, 0x14, 0xa9, 0xbc, 0x33, 0xf3, 0xde, 0x3c, 0xbf, 0x37, 0xd0, 0xf6, 0x59, 0x2c, 0x05, 0x8b,
-	0x46, 0x5c, 0x30, 0xc9, 0xb0, 0x99, 0x7d, 0x9c, 0x07, 0xe8, 0x78, 0x34, 0x08, 0x13, 0x49, 0x85,
-	0x47, 0xb7, 0x29, 0x4d, 0x24, 0xee, 0x42, 0xed, 0x9d, 0xee, 0x6c, 0xd4, 0x47, 0xc3, 0xa6, 0xa7,
-	0x9e, 0xb8, 0x07, 0xd6, 0x9a, 0x25, 0x32, 0x5e, 0x6e, 0xa8, 0x6d, 0x64, 0xed, 0xb2, 0x76, 0x5c,
-	0xe8, 0x1e, 0x16, 0x24, 0x9c, 0xc5, 0x09, 0xc5, 0x7f, 0xc0, 0x08, 0x49, 0xb6, 0xa0, 0xed, 0x19,
-	0x21, 0xc9, 0x6a, 0xae, 0x99, 0x46, 0xc8, 0x1d, 0x0e, 0xf5, 0x17, 0x46, 0x7e, 0xc4, 0x1d, 0xe9,
-	0xd6, 0x8e, 0x75, 0xd5, 0x8c, 0xc6, 0x84, 0xb3, 0x30, 0x96, 0x76, 0x3d, 0x9f, 0x15, 0x75, 0xe1,
-	0xc0, 0x2c, 0x1d, 0x38, 0x03, 0xe8, 0x28, 0xc5, 0xe7, 0x30, 0x91, 0x85, 0xcd, 0x13, 0x71, 0xe7,
-	0x09, 0xba, 0x07, 0x88, 0x36, 0xf2, 0x17, 0x4c, 0x9f, 0xa5, 0xb1, 0xd4, 0xb0, 0xbc, 0xc0, 0x03,
-	0x30, 0x63, 0x46, 0x68, 0x62, 0x1b, 0xfd, 0xda, 0xb0, 0xe5, 0xb6, 0xf2, 0x44, 0x47, 0x8a, 0xed,
-	0xe5, 0x13, 0xe7, 0x33, 0x5f, 0xf6, 0x9a, 0x52, 0xb1, 0x2b, 0x04, 0xff, 0x41, 0x43, 0xd0, 0xed,
-	0xa2, 0x14, 0x35, 0x05, 0xdd, 0xce, 0x09, 0xbe, 0x84, 0xdf, 0x8a, 0xa3, 0xfa, 0xca, 0x79, 0x7b,
-	0xf6, 0xcb, 0x6b, 0xa8, 0xc6, 0x9c, 0xec, 0x11, 0x3a, 0x4c, 0x79, 0x9e, 0xc0, 0x0c, 0xe9, 0x29,
-	0xdf, 0x23, 0x34, 0x05, 0xb0, 0x16, 0x9a, 0x5c, 0x79, 0x73, 0xf7, 0x0b, 0x01, 0x3c, 0xe6, 0xe7,
-	0x8e, 0xa8, 0xc0, 0x13, 0xb0, 0x8a, 0x1b, 0xe1, 0xff, 0xfa, 0x6f, 0x4f, 0xae, 0xde, 0xbb, 0x38,
-	0xeb, 0xeb, 0x0c, 0x26, 0x60, 0x15, 0xb9, 0x94, 0xe4, 0x93, 0x2c, 0x4b, 0xf2, 0x59, 0x80, 0x77,
-	0xd0, 0x2c, 0x73, 0xc0, 0x55, 0x54, 0x35, 0x99, 0x5e, 0x35, 0xc1, 0xe9, 0xf5, 0xdb, 0x55, 0x10,
-	0xca, 0x75, 0xba, 0x1a, 0xf9, 0x6c, 0x33, 0xf6, 0x97, 0x11, 0x61, 0x81, 0x7b, 0x3b, 0x0e, 0xd8,
-	0x0d, 0xfb, 0xa0, 0x22, 0x5a, 0xee, 0xc6, 0x19, 0x78, 0xd5, 0xc8, 0x3e, 0xf7, 0xdf, 0x01, 0x00,
-	0x00, 0xff, 0xff, 0x01, 0x48, 0x32, 0xf0, 0xd8, 0x02, 0x00, 0x00,
+	// 474 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x52, 0x4d, 0x6f, 0xd3, 0x40,
+	0x10, 0xc5, 0x4e, 0x1d, 0x9c, 0x69, 0xd3, 0x86, 0x05, 0x4a, 0x14, 0x90, 0x68, 0xb6, 0x1c, 0x7a,
+	0x4a, 0x20, 0x5c, 0x90, 0x7a, 0x40, 0x4a, 0x2f, 0x8d, 0x40, 0x08, 0x7c, 0xe4, 0x52, 0xa5, 0xde,
+	0x51, 0x62, 0xd5, 0xf1, 0x6e, 0x76, 0xd7, 0x48, 0x39, 0x70, 0xef, 0x0f, 0xe1, 0x87, 0xa2, 0xfd,
+	0xb0, 0xe3, 0xa4, 0xaa, 0x7a, 0xf2, 0xce, 0x9b, 0x37, 0xf3, 0x3c, 0xf3, 0x06, 0xba, 0x29, 0x2f,
+	0xb4, 0xe4, 0xf9, 0x48, 0x48, 0xae, 0x39, 0x89, 0xec, 0x87, 0x7e, 0x85, 0x93, 0x04, 0x17, 0x99,
+	0xd2, 0x28, 0x13, 0x5c, 0x97, 0xa8, 0x34, 0xe9, 0x41, 0xeb, 0x0e, 0x37, 0xfd, 0xe0, 0x2c, 0xb8,
+	0xe8, 0x24, 0xe6, 0x49, 0x06, 0x10, 0x2f, 0xb9, 0xd2, 0xc5, 0x7c, 0x85, 0xfd, 0xd0, 0xc2, 0x75,
+	0x4c, 0x27, 0xd0, 0xdb, 0x36, 0x50, 0x82, 0x17, 0x0a, 0xc9, 0x31, 0x84, 0x19, 0xb3, 0x0d, 0xba,
+	0x49, 0x98, 0x31, 0x1b, 0x0b, 0x5f, 0x19, 0x66, 0x82, 0x0a, 0x38, 0xf8, 0xc1, 0xd9, 0x93, 0xbc,
+	0x1d, 0xdd, 0xd6, 0xae, 0xae, 0xc9, 0x61, 0xc1, 0x04, 0xcf, 0x0a, 0xdd, 0x3f, 0x70, 0xb9, 0x2a,
+	0xae, 0x26, 0x88, 0xea, 0x09, 0xe8, 0x10, 0x4e, 0x8c, 0xe2, 0xf7, 0x4c, 0xe9, 0x6a, 0xcc, 0x3d,
+	0x71, 0xfa, 0x0d, 0x7a, 0x5b, 0x8a, 0x1f, 0xe4, 0x15, 0x44, 0x29, 0x2f, 0x0b, 0xed, 0x69, 0x2e,
+	0x20, 0x43, 0x88, 0x0a, 0xce, 0x50, 0xf5, 0xc3, 0xb3, 0xd6, 0xc5, 0xe1, 0xe4, 0xd0, 0x6d, 0x74,
+	0x64, 0xaa, 0x13, 0x97, 0xa1, 0x7f, 0x5d, 0xb3, 0x5f, 0x25, 0xca, 0x4d, 0x25, 0xf8, 0x1a, 0xda,
+	0x12, 0xd7, 0x37, 0xb5, 0x68, 0x24, 0x71, 0x3d, 0x63, 0xe4, 0x1d, 0x3c, 0x37, 0x35, 0x06, 0x37,
+	0x93, 0x77, 0xaf, 0x9f, 0x25, 0x6d, 0x03, 0xcc, 0xd8, 0x7d, 0x10, 0x6c, 0xb3, 0xc2, 0x6d, 0xe0,
+	0x3a, 0xf0, 0x59, 0x71, 0x1f, 0x04, 0x53, 0x80, 0xf8, 0xc6, 0x17, 0x37, 0xde, 0x82, 0x4e, 0xe1,
+	0xe8, 0x67, 0x59, 0xa4, 0xcb, 0x27, 0xa4, 0xdf, 0x42, 0x47, 0xe2, 0x8a, 0xeb, 0xad, 0x78, 0x12,
+	0x3b, 0x60, 0xc6, 0xe8, 0x07, 0x00, 0xdf, 0x43, 0xe4, 0x1b, 0x72, 0x0a, 0x6d, 0xa5, 0xe7, 0xba,
+	0x54, 0xb6, 0x43, 0x9c, 0xf8, 0x88, 0xbe, 0x87, 0xc8, 0xb2, 0x0c, 0xc1, 0x95, 0xfa, 0xc3, 0xf1,
+	0x11, 0x3d, 0xf7, 0x6d, 0xae, 0x96, 0x98, 0xde, 0x3d, 0xf2, 0x23, 0x93, 0x7f, 0x21, 0xc0, 0x95,
+	0x3b, 0xcf, 0x1c, 0x25, 0xb9, 0x84, 0xb8, 0xba, 0x29, 0x72, 0xea, 0xb7, 0xbb, 0x77, 0xa5, 0x83,
+	0x37, 0x0f, 0x70, 0xef, 0xd9, 0x25, 0xc4, 0x95, 0x8f, 0x75, 0xf1, 0x9e, 0xf7, 0x75, 0xf1, 0x03,
+	0xc3, 0x3f, 0x41, 0xa7, 0xf6, 0x8d, 0x34, 0x59, 0x4d, 0x27, 0x07, 0x4d, 0xc7, 0xc9, 0x17, 0x38,
+	0x6e, 0xee, 0x1a, 0x25, 0x79, 0xe9, 0xd3, 0x4d, 0x78, 0xf0, 0x62, 0x17, 0x34, 0x3b, 0x1d, 0x7b,
+	0x97, 0xec, 0x6a, 0x50, 0x92, 0x1d, 0x8a, 0x05, 0x07, 0x47, 0x4d, 0x68, 0x7a, 0xfe, 0x7b, 0xb8,
+	0xc8, 0xf4, 0xb2, 0xbc, 0x1d, 0xa5, 0x7c, 0x35, 0x4e, 0xe7, 0x39, 0xe3, 0x8b, 0xc9, 0xc7, 0x31,
+	0xff, 0x83, 0x32, 0x9f, 0x6f, 0xc6, 0x96, 0x7a, 0xdb, 0xb6, 0x9f, 0xcf, 0xff, 0x03, 0x00, 0x00,
+	0xff, 0xff, 0x68, 0xa2, 0x2b, 0x59, 0xf0, 0x03, 0x00, 0x00,
 }

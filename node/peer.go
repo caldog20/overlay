@@ -21,7 +21,7 @@ const (
 	TimerRxTimeout        = time.Second * 20
 	TimerKeepalive        = time.Second * 10
 	// Counts
-	CountHandshakeRetries = 3
+	CountHandshakeRetries = 10
 )
 
 type Peer struct {
