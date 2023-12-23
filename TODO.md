@@ -33,3 +33,7 @@ and ensure state is fresh
 
 TODO: Fix restarting keepalive timer when responder is completing handshake. 
 Wait until first successful encrypted packet is received to ensure handshake is proper before restarting TX/keepalive timer
+
+
+- Punching when not receiving handshake message, maybe another timer triggered after first attempt shorter than handshake timeout
+- For now, request punch on each handshake attempt whether I like it or not
