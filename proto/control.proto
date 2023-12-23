@@ -19,6 +19,7 @@ service Controller {
 message RegisterRequest {
   string key = 1;
   string hostname = 2;
+  string endpoint = 3;
   //  string endpoint = 3;
 }
 

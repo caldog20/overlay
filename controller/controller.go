@@ -2,7 +2,9 @@ package controller
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"net"
 	"net/http"
 	"net/netip"
 	"strconv"
@@ -58,6 +60,20 @@ func NewController() *Controller {
 	return c
 }
 
+func (c *Controller) DiscoveryServer() {
+	addr, _ := net.ResolveUDPAddr("udp4", ":7979")
+	s, _ := net.ListenUDP("udp4", addr)
+
+	buf := make([]byte, 100)
+	for {
+		_, raddr, _ := s.ReadFromUDP(buf)
+		if binary.BigEndian.Uint32(buf[:4]) != 8675309 {
+			continue
+		}
+		s.WriteToUDP([]byte(raddr.String()), raddr)
+	}
+}
+
 func (c *Controller) RunController(ctx context.Context, port string) {
 	e := echo.New()
 	e.Use(middleware.Logger())
@@ -81,10 +97,10 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 	//	return nil, twirp.InvalidArgumentError("port", "invalid port")
 	//}
 
-	ra := ctx.Value("remote-address").(string)
+	//ra := ctx.Value("remote-address").(string)
 
-	ra = fmt.Sprintf("%s:%d", ra, 5555)
-	raddr := netip.MustParseAddrPort(ra)
+	//ra = fmt.Sprintf("%s:%d", ra, 5555)
+	raddr := netip.MustParseAddrPort(req.Endpoint)
 
 	node, err := c.db.GetNodeByKey(key)
 	if err != nil {

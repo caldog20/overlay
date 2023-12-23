@@ -18,9 +18,17 @@ func (node *Node) Register() error {
 	hn, _ := os.Hostname()
 	hostname := strings.Split(hn, ".")[0]
 
+	endpoint, err := node.TempAddrDiscovery()
+
+	// TODO Fix
+	if err != nil {
+		panic(err)
+	}
+
 	registration, err := node.controller.Register(context.Background(), &proto.RegisterRequest{
 		Key:      base64.StdEncoding.EncodeToString(node.noise.keyPair.Public),
 		Hostname: hostname,
+		Endpoint: endpoint,
 	})
 
 	if err != nil {

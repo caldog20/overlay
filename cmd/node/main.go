@@ -44,7 +44,7 @@ func main() {
 
 	//go node.ReportBuffers()
 
-	localNode, err := node.NewNode("5555", "http://caldog.ddns.net:8080")
+	localNode, err := node.NewNode("5555", "http://146.190.62.190:8080")
 	if err != nil {
 		log.Fatal(err)
 	}

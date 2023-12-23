@@ -2,8 +2,10 @@ package node
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"net/netip"
 	"strconv"
@@ -35,6 +37,9 @@ type Node struct {
 	running atomic.Bool
 
 	controller proto.Controller
+
+	// Temp
+	controllerAddr string
 }
 
 func NewNode(port string, controller string) (*Node, error) {
@@ -70,8 +75,22 @@ func NewNode(port string, controller string) (*Node, error) {
 	}
 
 	node.controller = proto.NewControllerProtobufClient(controller, &http.Client{})
-
+	node.controllerAddr = controller
 	return node, nil
+}
+
+func (node *Node) TempAddrDiscovery() (string, error) {
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, 8675309)
+
+	addr, _, _ := net.SplitHostPort(node.controllerAddr)
+	raddr, _ := net.ResolveUDPAddr(UdpType, addr)
+
+	node.conn.WriteToUdp(b, raddr)
+	rx := make([]byte, 64)
+	node.conn.ReadFromUDP(rx)
+	log.Println(string(rx))
+	panic("")
 }
 
 func (node *Node) Run(ctx context.Context) {
