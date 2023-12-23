@@ -22,7 +22,7 @@ func (node *Node) Register() error {
 
 	// TODO Fix
 	if err != nil {
-		panic(err)
+		endpoint = ":" + node.port
 	}
 
 	registration, err := node.controller.Register(context.Background(), &proto.RegisterRequest{

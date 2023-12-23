@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -34,6 +35,14 @@ func main() {
 	//pprof.StartCPUProfile(f)
 	//defer pprof.StopCPUProfile()
 
+	controller := flag.String("controller", "", "controller address in <http://hostname or ip:port>")
+
+	flag.Parse()
+
+	if *controller == "" {
+		log.Fatal("controller argument must not be nil")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		sigchan := make(chan os.Signal, 1)
@@ -44,7 +53,7 @@ func main() {
 
 	//go node.ReportBuffers()
 
-	localNode, err := node.NewNode("5555", "http://146.190.62.190:8080")
+	localNode, err := node.NewNode("5555", *controller)
 	if err != nil {
 		log.Fatal(err)
 	}

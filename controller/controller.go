@@ -99,10 +99,17 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 	//	return nil, twirp.InvalidArgumentError("port", "invalid port")
 	//}
 
-	//ra := ctx.Value("remote-address").(string)
+	//if req.Endpoint == "" {
 
-	//ra = fmt.Sprintf("%s:%d", ra, 5555)
+	//}
+
 	raddr := netip.MustParseAddrPort(req.Endpoint)
+	if raddr.String() == "" {
+		// Discovery failed, we only received port
+		// Use RemoteAddr from http request and append port for Endpoint
+		ra := ctx.Value("remote-address").(string)
+		raddr = netip.MustParseAddrPort(ra + req.Endpoint)
+	}
 
 	node, err := c.db.GetNodeByKey(key)
 	if err != nil {

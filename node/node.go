@@ -38,8 +38,8 @@ type Node struct {
 	running atomic.Bool
 
 	controller proto.Controller
-
 	// Temp
+	port           string
 	controllerAddr string
 }
 
@@ -77,6 +77,7 @@ func NewNode(port string, controller string) (*Node, error) {
 
 	node.controller = proto.NewControllerProtobufClient(controller, &http.Client{})
 	node.controllerAddr = controller
+	node.port = port
 	return node, nil
 }
 
@@ -89,11 +90,22 @@ func (node *Node) TempAddrDiscovery() (string, error) {
 
 	node.conn.WriteToUdp(b, raddr)
 	rx := make([]byte, 256)
+
 	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 3))
-	n, _, _ := node.conn.ReadFromUDP(rx)
-	test := netip.MustParseAddrPort(string(rx[:n]))
+	n, _, err := node.conn.ReadFromUDP(rx)
+
 	node.conn.uc.SetReadDeadline(time.Time{})
-	return test.String(), nil
+
+	if err != nil {
+		return "", errors.New("Discovery failed")
+	}
+
+	addrPort, err := netip.ParseAddrPort(string(rx[:n]))
+	if err != nil {
+		return "", errors.New("Parsing AddrPort failed")
+	}
+
+	return addrPort.String(), nil
 }
 
 func (node *Node) Run(ctx context.Context) {
