@@ -36,15 +36,14 @@ func NewTun() (*Tun, error) {
 
 type OnTunnelPacket func(buffer *OutboundBuffer)
 
-func (t *Tun) ReadPackets(callback OnTunnelPacket) {
+func (tun *Tun) ReadPackets(callback OnTunnelPacket) {
 	for {
 		buffer := GetOutboundBuffer()
-		n, err := t.Read(buffer.packet)
+		n, err := tun.Read(buffer.packet)
 		if err != nil {
-			// TODO Panic is temporary
-			panic(err)
-			t.Close()
 			PutOutboundBuffer(buffer)
+			log.Println(err)
+			continue
 		}
 
 		buffer.size = n

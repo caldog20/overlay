@@ -23,7 +23,7 @@ go.work
 
 *test
 go-overlay
-./bin/
+bin/
 patches/
 
 # IDE Files

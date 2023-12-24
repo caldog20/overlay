@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"syscall"
 
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	UdpType = "udp4"
+	UDPType = "udp4"
 )
 
 // Maybe make interface or add more methods for functionality
@@ -34,7 +35,7 @@ func NewConn(port uint16) (*Conn, error) {
 		},
 	}
 
-	lp, err := lc.ListenPacket(context.Background(), UdpType, fmt.Sprintf("0.0.0.0:%d", port))
+	lp, err := lc.ListenPacket(context.Background(), UDPType, fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +59,9 @@ func (conn *Conn) ReadPackets(callback OnUDPPacket, index int) {
 		buffer := GetInboundBuffer()
 		n, raddr, err := conn.ReadFromUDP(buffer.in)
 		if err != nil {
-			// TODO Panic is temporary
-			panic(err)
 			PutInboundBuffer(buffer)
-			conn.Close()
-			return
+			log.Println(err)
+			continue
 		}
 
 		buffer.size = n
@@ -71,7 +70,7 @@ func (conn *Conn) ReadPackets(callback OnUDPPacket, index int) {
 	}
 }
 
-func (conn *Conn) WriteToUdp(b []byte, addr *net.UDPAddr) (int, error) {
+func (conn *Conn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
 	n, err := conn.uc.WriteToUDP(b, addr)
 	return n, err
 }

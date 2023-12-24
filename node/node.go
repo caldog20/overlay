@@ -13,9 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
+
+	"github.com/caldog20/overlay/proto"
 )
 
 type Node struct {
@@ -86,9 +87,9 @@ func (node *Node) TempAddrDiscovery() (string, error) {
 	binary.BigEndian.PutUint32(b, 8675309)
 
 	addr, _, _ := net.SplitHostPort(node.controllerAddr[7:])
-	raddr, _ := net.ResolveUDPAddr(UdpType, addr+":7979")
+	raddr, _ := net.ResolveUDPAddr(UDPType, addr+":7979")
 
-	node.conn.WriteToUdp(b, raddr)
+	node.conn.WriteToUDP(b, raddr)
 	rx := make([]byte, 256)
 
 	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 3))
@@ -124,7 +125,7 @@ func (node *Node) Run(ctx context.Context) {
 	}
 
 	go node.CheckPunches()
-	go node.conn.ReadPackets(node.OnUdpPacket, 0)
+	go node.conn.ReadPackets(node.OnUDPPacket, 0)
 	go node.tun.ReadPackets(node.OnTunnelPacket)
 
 	// TODO
@@ -137,7 +138,7 @@ func (node *Node) Run(ctx context.Context) {
 	//}
 }
 
-func (node *Node) OnUdpPacket(buffer *InboundBuffer, index int) {
+func (node *Node) OnUDPPacket(buffer *InboundBuffer, index int) {
 	err := buffer.header.Parse(buffer.in)
 	if err != nil {
 		log.Println(err)
@@ -191,7 +192,6 @@ func (node *Node) OnUdpPacket(buffer *InboundBuffer, index int) {
 		PutInboundBuffer(buffer)
 		return
 	}
-
 }
 
 func (node *Node) OnTunnelPacket(buffer *OutboundBuffer) {

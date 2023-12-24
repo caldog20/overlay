@@ -11,8 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
+
+	"github.com/caldog20/overlay/proto"
 )
 
 const (
@@ -31,8 +32,8 @@ type Peer struct {
 	raddr       *net.UDPAddr // Change later to list of endpoints and track active
 
 	node *Node // Pointer back to node for stuff
-	Ip   netip.Addr
-	Id   uint32
+	IP   netip.Addr
+	ID   uint32
 
 	noise struct {
 		hs        *noise.HandshakeState
@@ -48,7 +49,7 @@ type Peer struct {
 		handshakeSent  *time.Timer
 		receivedPacket *time.Timer
 		keepalive      *time.Timer
-		//sentPacket *time.Timer
+		// sentPacket *time.Timer
 	}
 
 	counters struct {
@@ -89,7 +90,7 @@ func NewPeer() *Peer {
 
 	peer.wg = sync.WaitGroup{}
 
-	//peer.ctx, peer.cancel = context.WithCancel(context.Background())
+	// peer.ctx, peer.cancel = context.WithCancel(context.Background())
 	return peer
 }
 
@@ -102,8 +103,8 @@ func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 	peer.node = node
 
 	// TODO Fix this
-	peer.Id = peerInfo.Id
-	peer.Ip = netip.MustParseAddr(peerInfo.Ip)
+	peer.ID = peerInfo.Id
+	peer.IP = netip.MustParseAddr(peerInfo.Ip)
 	peer.noise.pubkey, _ = base64.StdEncoding.DecodeString(peerInfo.Key)
 	peer.Hostname = peerInfo.Hostname
 
@@ -112,8 +113,8 @@ func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 	// TODO Add methods to manipulate map
 	node.maps.l.Lock()
 	defer node.maps.l.Unlock()
-	node.maps.id[peer.Id] = peer
-	node.maps.ip[peer.Ip] = peer
+	node.maps.id[peer.ID] = peer
+	node.maps.ip[peer.IP] = peer
 
 	return peer, nil
 }
@@ -124,7 +125,7 @@ func (peer *Peer) Start() error {
 
 	// Peer is already running
 	if peer.running.Load() {
-		return errors.New("Peer already running.")
+		return errors.New("peer already running")
 	}
 
 	// Lock here when starting peer so routines have to wait for handshake before trying to read data from channels
@@ -145,14 +146,14 @@ func (peer *Peer) Run(initiator bool) {
 	}
 
 	peer.mu.Lock() // Lock the peer state
-	//peer.ctx, peer.cancel = context.WithCancel(context.Background())
+	// peer.ctx, peer.cancel = context.WithCancel(context.Background())
 
 	peer.running.Store(true)
 	peer.wg.Add(3)
 
 	peer.mu.Unlock() // Unlock and launch routines
 
-	//go peer.Handshake(initiator)
+	// go peer.Handshake(initiator)
 	go peer.Inbound()
 	go peer.Outbound()
 
@@ -173,12 +174,12 @@ func (peer *Peer) InboundPacket(buffer *InboundBuffer) {
 		return
 	}
 
-	//peer.timers.receivedPacket.Stop()
+	// peer.timers.receivedPacket.Stop()
 
 	select {
 	case peer.inbound <- buffer:
 	default:
-		log.Printf("peer id %d: inbound channel full", peer.Id)
+		log.Printf("peer id %d: inbound channel full", peer.ID)
 	}
 }
 
@@ -192,7 +193,7 @@ func (peer *Peer) OutboundPacket(buffer *OutboundBuffer) {
 	select {
 	case peer.outbound <- buffer:
 	default:
-		log.Printf("peer id %d: outbound channel full", peer.Id)
+		log.Printf("peer id %d: outbound channel full", peer.ID)
 	}
 
 	if !peer.inTransport.Load() && peer.noise.state.Load() == 0 {

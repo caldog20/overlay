@@ -2,6 +2,7 @@ package node
 
 import (
 	"log"
+	"net"
 	"time"
 )
 
@@ -15,7 +16,7 @@ func (peer *Peer) contextDone() bool {
 }
 
 func (peer *Peer) Inbound() {
-	//log.Print("starting inbound routine")
+	// log.Print("starting inbound routine")
 
 	var err error
 
@@ -35,17 +36,12 @@ func (peer *Peer) Inbound() {
 		peer.timers.receivedPacket.Reset(TimerRxTimeout)
 
 		if len(buffer.packet) > 0 {
+			// TODO: Check source IP here and ensure it matches peer's Ip
 			peer.node.tun.Write(buffer.packet)
 		}
-		//else {
-		//log.Println("KEEPALIVE RECEIVED")
-		//}
-		// TODO Fix remote address roaming updates
-		//if !peer.raddr.IP.Equal(buffer.raddr.IP) {
-		//	peer.mu.Lock()
-		//	peer.raddr = buffer.raddr
-		//	peer.mu.Unlock()
-		//}
+
+		peer.UpdateEndpoint(buffer.raddr)
+
 		PutInboundBuffer(buffer)
 	}
 }
@@ -63,20 +59,33 @@ func (peer *Peer) Outbound() {
 		}
 
 		peer.timers.keepalive.Reset(TimerKeepalive)
-		//peer.timers.sentPacket.Stop()
-		//peer.timers.sentPacket.Reset(TimerKeepalive)
+		// peer.timers.sentPacket.Stop()
+		// peer.timers.sentPacket.Reset(TimerKeepalive)
 
 		peer.pendingLock.RUnlock()
-		peer.node.conn.WriteToUdp(out, peer.raddr)
-		//log.Printf("Sent data to %s - len: %d", p.remote.String(), elem.size)
+		peer.node.conn.WriteToUDP(out, peer.raddr)
+		// log.Printf("Sent data to %s - len: %d", p.remote.String(), elem.size)
 		PutOutboundBuffer(buffer)
+	}
+}
+
+func (peer *Peer) UpdateEndpoint(addr *net.UDPAddr) {
+	peer.mu.RLock()
+	var paddr *net.UDPAddr
+	*paddr = *peer.raddr
+	peer.mu.RUnlock()
+
+	if !paddr.IP.Equal(addr.IP) {
+		peer.mu.Lock()
+		*peer.raddr = *addr
+		peer.mu.Unlock()
 	}
 }
 
 func (peer *Peer) RequestPunch() {
 	peer.mu.RLock()
 	defer peer.mu.RUnlock()
-	peer.node.RequestPunch(peer.Id)
+	peer.node.RequestPunch(peer.ID)
 }
 
 func (peer *Peer) TrySendHandshake(retry bool) {
@@ -106,12 +115,12 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 }
 
 func (peer *Peer) Handshake() {
-	//log.Print("starting handshake routine")
+	// log.Print("starting handshake routine")
 	// TODO handshake completion function
 	for {
 		select {
 		case hs := <-peer.handshakes:
-			log.Printf("peer %d - received handshake message - remote: %s", peer.Id, peer.raddr.String())
+			log.Printf("peer %d - received handshake message - remote: %s", peer.ID, peer.raddr.String())
 			// received handshake inbound, process
 			state := peer.noise.state.Load()
 			switch state {
@@ -162,7 +171,6 @@ func (peer *Peer) Handshake() {
 				panic("out of sequence handshake message received")
 			}
 		}
-
 	}
 }
 
@@ -203,9 +211,9 @@ func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 		panic("error writing first handshake message")
 	}
 	peer.noise.state.Store(1)
-	peer.node.conn.WriteToUdp(final, peer.raddr)
+	peer.node.conn.WriteToUDP(final, peer.raddr)
 	PutOutboundBuffer(buffer)
-	log.Printf("peer %d - sent handshake message - remote: %s", peer.Id, peer.raddr.String())
+	log.Printf("peer %d - sent handshake message - remote: %s", peer.ID, peer.raddr.String())
 }
 
 // TODO Refactor this
@@ -222,7 +230,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 		peer.raddr = buffer.raddr
 		peer.noise.hs = nil
 	} else {
-		//peer.mu.Lock()
+		// peer.mu.Lock()
 		// Initialze handshake for responder
 		err = peer.InitHandshake(false)
 		if err != nil {
@@ -242,7 +250,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 			return err
 		}
 
-		peer.node.conn.WriteToUdp(final, peer.raddr)
+		peer.node.conn.WriteToUDP(final, peer.raddr)
 		PutOutboundBuffer(outbuf)
 	}
 
@@ -253,7 +261,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 func (peer *Peer) HandshakeTimeout() {
 	if peer.noise.state.Load() > 0 {
 		// Handshake response not received, send another handshake
-		log.Printf("peer %d handshake response timeout", peer.Id)
+		log.Printf("peer %d handshake response timeout", peer.ID)
 		peer.TrySendHandshake(true)
 	}
 }

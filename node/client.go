@@ -19,7 +19,6 @@ func (node *Node) Register() error {
 	hostname := strings.Split(hn, ".")[0]
 
 	endpoint, err := node.TempAddrDiscovery()
-
 	// TODO Fix
 	if err != nil {
 		endpoint = ":" + node.port
@@ -30,7 +29,6 @@ func (node *Node) Register() error {
 		Hostname: hostname,
 		Endpoint: endpoint,
 	})
-
 	if err != nil {
 		return errors.New("error registering with controller")
 	}
@@ -81,7 +79,6 @@ func (node *Node) RequestPunch(id uint32) {
 		ReqId:    node.id,
 		RemoteId: id,
 	})
-
 	if err != nil {
 		log.Println(err)
 		return
@@ -98,7 +95,7 @@ func (node *Node) CheckPunches() {
 		})
 
 		if err == nil {
-			raddr, err := net.ResolveUDPAddr(UdpType, resp.Remote)
+			raddr, err := net.ResolveUDPAddr(UDPType, resp.Remote)
 			if err != nil {
 				log.Println(err)
 				continue
@@ -107,7 +104,7 @@ func (node *Node) CheckPunches() {
 
 			// Send 2 for good measure
 			for i := 0; i < 2; i++ {
-				node.conn.WriteToUdp(punch, raddr)
+				node.conn.WriteToUDP(punch, raddr)
 			}
 
 			log.Printf("sent punch message to peer: %s", raddr.String())

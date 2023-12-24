@@ -13,14 +13,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/caldog20/overlay/proto"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/twitchtv/twirp"
+
+	"github.com/caldog20/overlay/proto"
 )
 
 const (
-	Subnet = "100.65.0."
+	Subnet            = "100.65.0."
+	RemoteAddr string = "remote-address"
 )
 
 type Controller struct {
@@ -43,7 +45,7 @@ func WithRemoteAddr(base http.Handler) http.Handler {
 		ctx := r.Context()
 		ra := r.RemoteAddr
 		ra = strings.Split(ra, ":")[0]
-		ctx = context.WithValue(ctx, "remote-address", ra)
+		ctx = context.WithValue(ctx, RemoteAddr, ra)
 		r = r.WithContext(ctx)
 		base.ServeHTTP(w, r)
 	})
@@ -99,7 +101,7 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 	//	return nil, twirp.InvalidArgumentError("port", "invalid port")
 	//}
 
-	//if req.Endpoint == "" {
+	// if req.Endpoint == "" {
 
 	//}
 
@@ -230,7 +232,6 @@ func (c *Controller) NodeQuery(ctx context.Context, req *proto.NodeQueryRequest)
 	resp = node.Proto()
 
 	return resp, nil
-
 }
 
 func (c *Controller) PunchRequester(ctx context.Context, req *proto.PunchRequest) (*proto.PunchReply, error) {
@@ -257,7 +258,6 @@ func (c *Controller) PunchRequester(ctx context.Context, req *proto.PunchRequest
 	return &proto.PunchReply{
 		Status: true,
 	}, nil
-
 }
 
 func (c *Controller) PunchChecker(ctx context.Context, req *proto.PunchCheck) (*proto.Punch, error) {
