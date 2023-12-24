@@ -72,10 +72,10 @@ func (peer *Peer) Outbound() {
 func (peer *Peer) UpdateEndpoint(addr *net.UDPAddr) {
 	peer.mu.RLock()
 	var paddr *net.UDPAddr
-	*paddr = *peer.raddr
+	paddr = peer.raddr
 	peer.mu.RUnlock()
 
-	if !paddr.IP.Equal(addr.IP) {
+	if !paddr.IP.Equal(addr.IP) || paddr.Port != addr.Port {
 		peer.mu.Lock()
 		*peer.raddr = *addr
 		peer.mu.Unlock()
@@ -156,6 +156,9 @@ func (peer *Peer) Handshake() {
 			// Handshake finished
 			case 2: // Receiving new handshake from peer, lock and consume handshake initiation
 				peer.pendingLock.Lock()
+				// TODO Do something better here
+				// Peer roaming possibly
+				peer.UpdateEndpoint(hs.raddr)
 				err := peer.handshakeP2(hs)
 				if err != nil {
 					panic(err)

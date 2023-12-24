@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"log"
 	"net"
@@ -11,7 +10,6 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
@@ -40,11 +38,11 @@ type Node struct {
 
 	controller proto.Controller
 	// Temp
-	port           string
+	port           uint16
 	controllerAddr string
 }
 
-func NewNode(port string, controller string) (*Node, error) {
+func NewNode(port uint16, controller string) (*Node, error) {
 	node := new(Node)
 	node.maps.id = make(map[uint32]*Peer)
 	node.maps.ip = make(map[netip.Addr]*Peer)
@@ -61,15 +59,28 @@ func NewNode(port string, controller string) (*Node, error) {
 
 	node.noise.keyPair = keypair
 
-	listenPort, err := strconv.ParseUint(port, 10, 16)
-	if err != nil {
+	if port > 65535 {
 		return nil, errors.New("invalid udp port")
 	}
 
-	node.conn, err = NewConn(uint16(listenPort))
+	node.conn, err = NewConn(port)
 	if err != nil {
 		return nil, err
 	}
+
+	selectedPort := node.conn.uc.LocalAddr().String()
+
+	_, p, err := net.SplitHostPort(selectedPort)
+	if err != nil {
+		return nil, err
+	}
+
+	finalPort, err := strconv.ParseUint(p, 10, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	node.port = uint16(finalPort)
 
 	node.tun, err = NewTun()
 	if err != nil {
@@ -78,35 +89,7 @@ func NewNode(port string, controller string) (*Node, error) {
 
 	node.controller = proto.NewControllerProtobufClient(controller, &http.Client{})
 	node.controllerAddr = controller
-	node.port = port
 	return node, nil
-}
-
-func (node *Node) TempAddrDiscovery() (string, error) {
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, 8675309)
-
-	addr, _, _ := net.SplitHostPort(node.controllerAddr[7:])
-	raddr, _ := net.ResolveUDPAddr(UDPType, addr+":7979")
-
-	node.conn.WriteToUDP(b, raddr)
-	rx := make([]byte, 256)
-
-	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 3))
-	n, _, err := node.conn.ReadFromUDP(rx)
-
-	node.conn.uc.SetReadDeadline(time.Time{})
-
-	if err != nil {
-		return "", errors.New("Discovery failed")
-	}
-
-	addrPort, err := netip.ParseAddrPort(string(rx[:n]))
-	if err != nil {
-		return "", errors.New("Parsing AddrPort failed")
-	}
-
-	return addrPort.String(), nil
 }
 
 func (node *Node) Run(ctx context.Context) {

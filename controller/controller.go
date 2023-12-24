@@ -63,7 +63,7 @@ func NewController() *Controller {
 }
 
 func (c *Controller) DiscoveryServer() {
-	addr, _ := net.ResolveUDPAddr("udp4", ":7979")
+	addr, _ := net.ResolveUDPAddr("udp4", ":7974")
 	s, _ := net.ListenUDP("udp4", addr)
 
 	buf := make([]byte, 100)
@@ -105,8 +105,8 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 
 	//}
 
-	raddr := netip.MustParseAddrPort(req.Endpoint)
-	if raddr.String() == "" {
+	raddr, err := netip.ParseAddrPort(req.Endpoint)
+	if err != nil {
 		// Discovery failed, we only received port
 		// Use RemoteAddr from http request and append port for Endpoint
 		ra := ctx.Value("remote-address").(string)

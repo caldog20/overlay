@@ -35,8 +35,8 @@ func main() {
 	//pprof.StartCPUProfile(f)
 	//defer pprof.StopCPUProfile()
 
-	controller := flag.String("controller", "", "controller address in <http://hostname or ip:port>")
-
+	controller := flag.String("controller", "http://10.170.241.1:8080", "controller address in <http://hostname or ip:port>")
+	port := flag.Uint("port", 0, "listen port for udp socket - defaults to 0 for randomly selected port")
 	flag.Parse()
 
 	if *controller == "" {
@@ -53,7 +53,7 @@ func main() {
 
 	//go node.ReportBuffers()
 
-	localNode, err := node.NewNode("5555", *controller)
+	localNode, err := node.NewNode(uint16(*port), *controller)
 	if err != nil {
 		log.Fatal(err)
 	}

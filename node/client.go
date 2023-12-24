@@ -3,7 +3,9 @@ package node
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/netip"
@@ -19,9 +21,10 @@ func (node *Node) Register() error {
 	hostname := strings.Split(hn, ".")[0]
 
 	endpoint, err := node.TempAddrDiscovery()
+
 	// TODO Fix
 	if err != nil {
-		endpoint = ":" + node.port
+		endpoint = fmt.Sprintf(":%d", node.port)
 	}
 
 	registration, err := node.controller.Register(context.Background(), &proto.RegisterRequest{
@@ -73,6 +76,32 @@ func (node *Node) UpdateNodes() error {
 	return nil
 }
 
+func (node *Node) TempAddrDiscovery() (string, error) {
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, 8675309)
+
+	addr, _, _ := net.SplitHostPort(node.controllerAddr[7:])
+	raddr, _ := net.ResolveUDPAddr(UDPType, addr+":7979")
+
+	node.conn.WriteToUDP(b, raddr)
+	rx := make([]byte, 256)
+
+	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 1))
+	n, _, err := node.conn.ReadFromUDP(rx)
+
+	node.conn.uc.SetReadDeadline(time.Time{})
+
+	if err != nil {
+		return "", errors.New("Discovery failed")
+	}
+
+	addrPort, err := netip.ParseAddrPort(string(rx[:n]))
+	if err != nil {
+		return "", errors.New("Parsing AddrPort failed")
+	}
+
+	return addrPort.String(), nil
+}
 func (node *Node) RequestPunch(id uint32) {
 	// TODO Fix response for requesting punches
 	_, err := node.controller.PunchRequester(context.Background(), &proto.PunchRequest{
