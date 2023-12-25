@@ -62,13 +62,22 @@ func NewController() *Controller {
 	return c
 }
 
-func (c *Controller) DiscoveryServer() {
+func (c *Controller) DiscoveryServer(ctx context.Context) {
 	addr, _ := net.ResolveUDPAddr("udp4", ":7974")
 	s, _ := net.ListenUDP("udp4", addr)
 
 	buf := make([]byte, 100)
 	for {
-		_, raddr, _ := s.ReadFromUDP(buf)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		s.SetReadDeadline(time.Now().Add(time.Second * 2))
+		_, raddr, err := s.ReadFromUDP(buf)
+		if err != nil {
+			continue
+		}
 		if binary.BigEndian.Uint32(buf[:4]) != 8675309 {
 			continue
 		}
@@ -86,9 +95,21 @@ func (c *Controller) RunController(ctx context.Context, port string) {
 
 	e.Any("/twirp*", echo.WrapHandler(handler))
 
-	go c.DiscoveryServer()
+	go c.DiscoveryServer(ctx)
 
-	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", port)))
+	go func() {
+		if err := e.Start(fmt.Sprintf(":%s", port)); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal("shutting down the server")
+		}
+	}()
+
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		e.Logger.Fatal(err)
+	}
 }
 
 func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {

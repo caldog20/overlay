@@ -47,7 +47,7 @@ func main() {
 	go func() {
 		sigchan := make(chan os.Signal, 1)
 		signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-		log.Printf("Received %v signal from channel, shutting down\n", <-sigchan)
+		log.Printf("Received %v signal, shutting down\n", <-sigchan)
 		cancel()
 	}()
 

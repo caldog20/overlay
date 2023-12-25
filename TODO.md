@@ -16,14 +16,14 @@ or make a mock node possible
 
 I'm rambling now.. ^.^
 
-- Change peers to start when added
-- Lock node keypair when using it for handshake initiation
+- Change peers to start when added - done
+- Lock node keypair when using it for handshake initiation - done
 
 
-- Implement peer timers for send/recv packets and timout/dead peer detection
-- possibly allow optional keepalives that are tunable 
+- Implement peer timers for send/recv packets and timout/dead peer detection - done
+- possibly allow optional keepalives that are tunable
 - after a certain dead period, flush all queues, reset peer state properly to await outbound/inbound packet 
-and ensure state is fresh
+and ensure state is fresh - done
 
 - validate use of atomics/locks and refactor placement and usage 
 - maybe implement lock for noise state separately instead of for entire peer
@@ -38,3 +38,5 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 - Punching when not receiving handshake message, maybe another timer triggered after first attempt shorter than handshake timeout
 - For now, request punch on each handshake attempt whether I like it or not
 - Eventually support ipv6 inside and outside the tunnel
+
+- Protect peer endpoint better with synchronization
