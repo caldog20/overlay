@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"log"
 	"net"
@@ -18,8 +17,8 @@ import (
 
 const (
 	// Timers
-	TimerHandshakeTimeout = time.Second * 5
-	TimerRxTimeout        = time.Second * 20
+	TimerHandshakeTimeout = time.Second * 3
+	TimerRxTimeout        = time.Second * 15
 	TimerKeepalive        = time.Second * 10
 	// Counts
 	CountHandshakeRetries = 10
@@ -94,6 +93,7 @@ func NewPeer() *Peer {
 	return peer
 }
 
+// TODO Proper error text for context around the issue
 func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 	peer := NewPeer()
 
@@ -102,13 +102,24 @@ func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 
 	peer.node = node
 
+	var err error
+
 	// TODO Fix this
 	peer.ID = peerInfo.Id
-	peer.IP = netip.MustParseAddr(peerInfo.Ip)
-	peer.noise.pubkey, _ = base64.StdEncoding.DecodeString(peerInfo.Key)
+	peer.IP, err = ParseAddr(peerInfo.Ip)
+	if err != nil {
+		return nil, err
+	}
+	peer.noise.pubkey, err = DecodeBase64Key(peerInfo.Key)
+	if err != nil {
+		return nil, err
+	}
 	peer.Hostname = peerInfo.Hostname
 
-	peer.raddr, _ = net.ResolveUDPAddr("udp4", peerInfo.Endpoint)
+	peer.raddr, err = net.ResolveUDPAddr("udp4", peerInfo.Endpoint)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO Add methods to manipulate map
 	node.maps.l.Lock()
@@ -131,6 +142,7 @@ func (peer *Peer) Start() error {
 	// Lock here when starting peer so routines have to wait for handshake before trying to read data from channels
 	peer.pendingLock.Lock()
 
+	peer.wg.Add(3)
 	go peer.Inbound()
 	go peer.Outbound()
 	go peer.Handshake()
@@ -140,33 +152,49 @@ func (peer *Peer) Start() error {
 	return nil
 }
 
-func (peer *Peer) Run(initiator bool) {
-	if peer.running.Load() {
-		return
-	}
+func (peer *Peer) Stop() {
+	peer.ResetState()
 
-	peer.mu.Lock() // Lock the peer state
-	// peer.ctx, peer.cancel = context.WithCancel(context.Background())
-
-	peer.running.Store(true)
-	peer.wg.Add(3)
-
-	peer.mu.Unlock() // Unlock and launch routines
-
-	// go peer.Handshake(initiator)
-	go peer.Inbound()
-	go peer.Outbound()
-
-	// Wait here for goroutines to finish
-	peer.wg.Wait()
-
+	// send nil value to kill goroutines
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
+	peer.handshakes <- nil
+	peer.inbound <- nil
+	peer.outbound <- nil
 
-	// Cleanup peer state and return to idle peer
-	peer.ResetState()
-	log.Println("Shutting peer down")
+	// Wait until all routines are finished
+	peer.wg.Wait()
+	log.Printf("peer %d goroutines have stopped", peer.ID)
+	peer.running.Store(false)
 }
+
+//func (peer *Peer) Run(initiator bool) {
+//	if peer.running.Load() {
+//		return
+//	}
+//
+//	peer.mu.Lock() // Lock the peer state
+//	// peer.ctx, peer.cancel = context.WithCancel(context.Background())
+//
+//	peer.running.Store(true)
+//	peer.wg.Add(3)
+//
+//	peer.mu.Unlock() // Unlock and launch routines
+//
+//	// go peer.Handshake(initiator)
+//	go peer.Inbound()
+//	go peer.Outbound()
+//
+//	// Wait here for goroutines to finish
+//	peer.wg.Wait()
+//
+//	peer.mu.Lock()
+//	defer peer.mu.Unlock()
+//
+//	// Cleanup peer state and return to idle peer
+//	peer.ResetState()
+//	log.Println("Shutting peer down")
+//}
 
 func (peer *Peer) InboundPacket(buffer *InboundBuffer) {
 	if !peer.running.Load() {

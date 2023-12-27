@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -45,18 +46,22 @@ func (node *Node) Register() error {
 func (node *Node) UpdateNodes() error {
 	resp, err := node.controller.NodeList(context.Background(), &proto.NodeListRequest{Id: node.id})
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return err
 	}
 
 	var new []*proto.Node
 
 	node.maps.l.RLock()
 	for _, n := range resp.Nodes {
-		_, ok := node.maps.id[n.Id]
-		if !ok {
+		p, found := node.maps.id[n.Id]
+		if !found {
 			new = append(new, n)
+		} else {
+			p.Update(n)
 		}
 	}
+
 	node.maps.l.RUnlock()
 
 	if len(new) > 0 {
@@ -73,6 +78,74 @@ func (node *Node) UpdateNodes() error {
 	}
 
 	log.Println("Update nodes complete")
+	return nil
+}
+
+// TODO Fix variable naming and compares
+func (peer *Peer) Update(info *proto.Node) error {
+	peer.mu.RLock()
+	currentEndpoint := peer.raddr.AddrPort()
+	currentKey := peer.noise.pubkey
+	currentHostname := peer.Hostname
+	currentIP := peer.IP
+	peer.mu.RUnlock()
+
+	// TODO Helper function for parsing IPs
+	newEndpoint, err := ParseAddrPort(info.Endpoint)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	if CompareAddrPort(currentEndpoint, newEndpoint) != 0 {
+		peer.mu.Lock()
+		newRemote, err := net.ResolveUDPAddr(UDPType, newEndpoint.String())
+		if err != nil {
+			log.Println("error updating peer endpoint udp address")
+		} else {
+			peer.raddr = newRemote
+		}
+		peer.mu.Unlock()
+	}
+
+	if strings.Compare(currentHostname, info.Hostname) != 0 {
+		peer.mu.Lock()
+		peer.Hostname = info.Hostname
+		peer.mu.Unlock()
+	}
+
+	newKey, err := DecodeBase64Key(info.Key)
+	if err != nil {
+		log.Println(err)
+		//return err
+	}
+
+	if subtle.ConstantTimeCompare(currentKey, newKey) != 1 {
+		// TODO If the key has changed, we need to stop the peer and clear state,
+		// update new key and restart peer completely
+		panic("peer key update not yet implemented")
+		peer.Stop()
+		peer.mu.Lock()
+		peer.noise.pubkey = newKey
+		peer.mu.Unlock()
+		err = peer.Start()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	newIP, err := ParseAddr(info.Ip)
+	if err != nil {
+		log.Println(err)
+		//return err
+	}
+
+	if currentIP.Compare(newIP) != 0 {
+		peer.mu.Lock()
+		peer.IP = newIP
+		peer.mu.Unlock()
+	}
+
 	return nil
 }
 
@@ -102,6 +175,7 @@ func (node *Node) TempAddrDiscovery() (string, error) {
 
 	return addrPort.String(), nil
 }
+
 func (node *Node) RequestPunch(id uint32) {
 	// TODO Fix response for requesting punches
 	_, err := node.controller.PunchRequester(context.Background(), &proto.PunchRequest{

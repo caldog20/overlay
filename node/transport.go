@@ -21,6 +21,10 @@ func (peer *Peer) Inbound() {
 	var err error
 
 	for buffer := range peer.inbound {
+		// nil value is signal to exit the routine
+		if buffer == nil {
+			return
+		}
 		peer.pendingLock.RLock()
 		peer.noise.rx.SetNonce(buffer.header.Counter)
 		buffer.packet, err = peer.noise.rx.Decrypt(buffer.packet[:0], nil, buffer.in[HeaderLen:buffer.size])
@@ -48,6 +52,11 @@ func (peer *Peer) Inbound() {
 
 func (peer *Peer) Outbound() {
 	for buffer := range peer.outbound {
+		// nil value is signal to exit the routine
+		if buffer == nil {
+			return
+		}
+
 		peer.pendingLock.RLock()
 		out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
 		out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
@@ -63,7 +72,10 @@ func (peer *Peer) Outbound() {
 		// peer.timers.sentPacket.Reset(TimerKeepalive)
 
 		peer.pendingLock.RUnlock()
+		// To protect endpoint changes
+		peer.mu.RLock()
 		peer.node.conn.WriteToUDP(out, peer.raddr)
+		peer.mu.RUnlock()
 		// log.Printf("Sent data to %s - len: %d", p.remote.String(), elem.size)
 		PutOutboundBuffer(buffer)
 	}
@@ -102,6 +114,10 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 			peer.ResetState()
 			return
 		}
+		// TODO Remove this in favor of polling updates from controller
+		if attempts > 3 {
+			peer.node.UpdateNodes()
+		}
 		log.Printf("retrying handshake attempt %d", peer.counters.handshakeRetries.Load())
 	}
 
@@ -120,62 +136,63 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 func (peer *Peer) Handshake() {
 	// log.Print("starting handshake routine")
 	// TODO handshake completion function
-	for {
-		select {
-		case hs := <-peer.handshakes:
-			log.Printf("peer %d - received handshake message - remote: %s", peer.ID, peer.raddr.String())
-			// received handshake inbound, process
-			state := peer.noise.state.Load()
-			switch state {
-			case 0: // receiving first handshake message as responder
-				if hs.header.Counter != 0 {
-					panic("header counter doesnt match state 0")
-				}
-				err := peer.handshakeP2(hs)
-				if err != nil {
-					panic(err)
-				}
-				peer.noise.state.Store(2)
-				peer.inTransport.Store(true)
-				peer.pendingLock.Unlock()
-				peer.counters.handshakeRetries.Store(0)
-				peer.timers.handshakeSent.Stop()
-				peer.timers.keepalive.Reset(TimerKeepalive + time.Second*5)
-				// Handshake finished
-			case 1: // receiving handshake response as initiator
-				if hs.header.Counter != 1 {
-					panic("header counter doesnt match state 1")
-				}
-				err := peer.handshakeP2(hs)
-				if err != nil {
-					panic(err)
-				}
-				peer.noise.state.Store(2)
-				peer.inTransport.Store(true)
-				peer.pendingLock.Unlock()
-				peer.timers.handshakeSent.Stop()
-				peer.counters.handshakeRetries.Store(0)
-				peer.timers.keepalive.Reset(TimerKeepalive)
-			// Handshake finished
-			case 2: // Receiving new handshake from peer, lock and consume handshake initiation
-				peer.pendingLock.Lock()
-				// TODO Do something better here
-				// Peer roaming possibly
-				peer.UpdateEndpoint(hs.raddr)
-				err := peer.handshakeP2(hs)
-				if err != nil {
-					panic(err)
-				}
-				peer.noise.state.Store(2)
-				peer.inTransport.Store(true)
-				peer.pendingLock.Unlock()
-				peer.timers.handshakeSent.Stop()
-				peer.counters.handshakeRetries.Store(0)
-				peer.timers.keepalive.Reset(TimerKeepalive)
-				peer.timers.receivedPacket.Reset(TimerRxTimeout)
-			default:
-				panic("out of sequence handshake message received")
+	for buffer := range peer.handshakes {
+		// nil value is signal to exit the routine
+		if buffer == nil {
+			return
+		}
+		log.Printf("peer %d - received handshake message - remote: %s", peer.ID, peer.raddr.String())
+		// received handshake inbound, process
+		state := peer.noise.state.Load()
+		switch state {
+		case 0: // receiving first handshake message as responder
+			if buffer.header.Counter != 0 {
+				panic("header counter doesnt match state 0")
 			}
+			err := peer.handshakeP2(buffer)
+			if err != nil {
+				panic(err)
+			}
+			peer.noise.state.Store(2)
+			peer.inTransport.Store(true)
+			peer.pendingLock.Unlock()
+			peer.counters.handshakeRetries.Store(0)
+			peer.timers.handshakeSent.Stop()
+			peer.timers.keepalive.Reset(TimerKeepalive + time.Second*5)
+			// Handshake finished
+		case 1: // receiving handshake response as initiator
+			if buffer.header.Counter != 1 {
+				panic("header counter doesnt match state 1")
+			}
+			err := peer.handshakeP2(buffer)
+			if err != nil {
+				panic(err)
+			}
+			peer.noise.state.Store(2)
+			peer.inTransport.Store(true)
+			peer.pendingLock.Unlock()
+			peer.timers.handshakeSent.Stop()
+			peer.counters.handshakeRetries.Store(0)
+			peer.timers.keepalive.Reset(TimerKeepalive)
+		// Handshake finished
+		case 2: // Receiving new handshake from peer, lock and consume handshake initiation
+			peer.pendingLock.Lock()
+			// TODO Do something better here
+			// Peer roaming possibly
+			peer.UpdateEndpoint(buffer.raddr)
+			err := peer.handshakeP2(buffer)
+			if err != nil {
+				panic(err)
+			}
+			peer.noise.state.Store(2)
+			peer.inTransport.Store(true)
+			peer.pendingLock.Unlock()
+			peer.timers.handshakeSent.Stop()
+			peer.counters.handshakeRetries.Store(0)
+			peer.timers.keepalive.Reset(TimerKeepalive)
+			peer.timers.receivedPacket.Reset(TimerRxTimeout)
+		default:
+			panic("out of sequence handshake message received")
 		}
 	}
 }

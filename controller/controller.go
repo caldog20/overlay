@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -63,7 +64,7 @@ func NewController() *Controller {
 }
 
 func (c *Controller) DiscoveryServer(ctx context.Context) {
-	addr, _ := net.ResolveUDPAddr("udp4", ":7974")
+	addr, _ := net.ResolveUDPAddr("udp4", ":7979")
 	s, _ := net.ListenUDP("udp4", addr)
 
 	buf := make([]byte, 100)
@@ -131,6 +132,7 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 		// Discovery failed, we only received port
 		// Use RemoteAddr from http request and append port for Endpoint
 		ra := ctx.Value("remote-address").(string)
+		log.Printf("USING REMOTE-ADDRESS AND PORT: %s %s", ra, req.Endpoint)
 		raddr = netip.MustParseAddrPort(ra + req.Endpoint)
 	}
 
@@ -209,7 +211,10 @@ func (c *Controller) NodeList(ctx context.Context, req *proto.NodeListRequest) (
 
 	c.db.l.RLock()
 	defer c.db.l.RUnlock()
-	for _, node := range c.db.id {
+	for id, node := range c.db.id {
+		if id == req.Id {
+			continue
+		}
 		nodes = append(nodes, node.Proto())
 		count++
 	}

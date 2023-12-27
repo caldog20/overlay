@@ -1,8 +1,10 @@
 package node
 
 import (
+	"cmp"
 	"encoding/base64"
 	"errors"
+	"net/netip"
 	"os"
 
 	"github.com/flynn/noise"
@@ -61,4 +63,36 @@ func StoreKeyToDisk(keyPair noise.DHKey) error {
 	}
 
 	return nil
+}
+
+func CompareAddrPort(p1, p2 netip.AddrPort) int {
+	c := p1.Addr().Compare(p2.Addr())
+	if c != 0 {
+		return c
+	}
+	return cmp.Compare(p1.Port(), p2.Port())
+}
+
+func DecodeBase64Key(key string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(key)
+	if err != nil {
+		return nil, err
+	}
+	return decoded, nil
+}
+
+func ParseAddr(addr string) (netip.Addr, error) {
+	address, err := netip.ParseAddr(addr)
+	if err != nil {
+		return netip.Addr{}, err
+	}
+	return address, err
+}
+
+func ParseAddrPort(ap string) (netip.AddrPort, error) {
+	endpoint, err := netip.ParseAddrPort(ap)
+	if err != nil {
+		return netip.AddrPort{}, err
+	}
+	return endpoint, nil
 }
