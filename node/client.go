@@ -86,7 +86,7 @@ func (node *Node) TempAddrDiscovery() (string, error) {
 	node.conn.WriteToUDP(b, raddr)
 	rx := make([]byte, 256)
 
-	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 1))
+	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 2))
 	n, _, err := node.conn.ReadFromUDP(rx)
 
 	node.conn.uc.SetReadDeadline(time.Time{})

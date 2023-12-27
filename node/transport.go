@@ -107,7 +107,10 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
-	peer.InitHandshake(true)
+	err := peer.InitHandshake(true)
+	if err != nil {
+		panic(err)
+	}
 	buffer := GetOutboundBuffer()
 	peer.handshakeP1(buffer)
 	peer.timers.handshakeSent.Stop()

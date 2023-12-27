@@ -64,8 +64,8 @@ func (h *Header) Encode(b []byte, t uint8, index uint32, counter uint64) ([]byte
 
 func encodeToSlice(b []byte, h *Header) []byte {
 	b = b[:HeaderLen]
-	b[0] = byte(h.Version)
-	b[1] = byte(h.Type)
+	b[0] = h.Version
+	b[1] = h.Type
 	binary.BigEndian.PutUint32(b[2:6], h.SenderIndex)
 	binary.BigEndian.PutUint64(b[6:14], h.Counter)
 	binary.BigEndian.PutUint16(b[14:18], h.Padding)
