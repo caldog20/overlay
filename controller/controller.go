@@ -88,7 +88,7 @@ func (c *Controller) DiscoveryServer(ctx context.Context) {
 
 func (c *Controller) RunController(ctx context.Context, port string) {
 	e := echo.New()
-	e.Use(middleware.Logger())
+	//e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	server := proto.NewControllerServer(c)
@@ -132,7 +132,6 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 		// Discovery failed, we only received port
 		// Use RemoteAddr from http request and append port for Endpoint
 		ra := ctx.Value("remote-address").(string)
-		log.Printf("USING REMOTE-ADDRESS AND PORT: %s %s", ra, req.Endpoint)
 		raddr = netip.MustParseAddrPort(ra + req.Endpoint)
 	}
 
@@ -153,6 +152,8 @@ func (c *Controller) Register(ctx context.Context, req *proto.RegisterRequest) (
 	node.Hostname = req.Hostname
 
 	resp := node.RegisterResponseProto()
+
+	log.Printf("registered node: node id: %d - node vpnip: %s - node raddr: %s", node.ID, node.VpnIP.String(), node.EndPoint.String())
 
 	return resp, nil
 }
