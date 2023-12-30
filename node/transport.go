@@ -89,8 +89,19 @@ func (peer *Peer) UpdateEndpoint(addr *net.UDPAddr) {
 
 	if !paddr.IP.Equal(addr.IP) || paddr.Port != addr.Port {
 		peer.mu.Lock()
+		log.Printf("Updating peer remote address")
 		*peer.raddr = *addr
 		peer.mu.Unlock()
+	}
+}
+
+func (peer *Peer) UpdateEndpointLocked(addr *net.UDPAddr) {
+	var paddr *net.UDPAddr
+	paddr = peer.raddr
+
+	if !paddr.IP.Equal(addr.IP) || paddr.Port != addr.Port {
+		log.Printf("Updating peer remote address")
+		*peer.raddr = *addr
 	}
 }
 
@@ -105,7 +116,6 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 
 	// TODO validate placement of lock here
 	if retry {
-		peer.RequestPunch()
 		attempts := peer.counters.handshakeRetries.Load()
 		if attempts > CountHandshakeRetries {
 			// Peer never responded to handshakes, so flush all queues, and reset state
@@ -115,8 +125,8 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 			return
 		}
 		// TODO Remove this in favor of polling updates from controller
-		if attempts > 3 {
-			peer.node.UpdateNodes()
+		if attempts > 2 {
+			peer.RequestPunch()
 		}
 		log.Printf("retrying handshake attempt %d", peer.counters.handshakeRetries.Load())
 	}
@@ -266,6 +276,8 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 			return err
 		}
 
+		peer.UpdateEndpointLocked(buffer.raddr)
+
 		outbuf := GetOutboundBuffer()
 		final, _ := outbuf.header.Encode(outbuf.out, Handshake, peer.node.id, 1)
 		final, peer.noise.rx, peer.noise.tx, err = peer.noise.hs.WriteMessage(final, nil)
@@ -283,6 +295,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 
 func (peer *Peer) HandshakeTimeout() {
 	if peer.noise.state.Load() > 0 {
+		peer.inTransport.Store(false)
 		// Handshake response not received, send another handshake
 		log.Printf("peer %d handshake response timeout", peer.ID)
 		if peer.noise.initiator {
