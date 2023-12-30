@@ -285,12 +285,15 @@ func (peer *Peer) HandshakeTimeout() {
 	if peer.noise.state.Load() > 0 {
 		// Handshake response not received, send another handshake
 		log.Printf("peer %d handshake response timeout", peer.ID)
-		peer.TrySendHandshake(true)
+		if peer.noise.initiator {
+			peer.TrySendHandshake(true)
+		}
 	}
 }
 
 func (peer *Peer) TXTimeout() {
 	if len(peer.outbound) == 0 {
+		log.Printf("peer %d sending keepalive", peer.ID)
 		// Queue up empty packet
 		buffer := GetOutboundBuffer()
 		buffer.peer = peer
@@ -314,6 +317,7 @@ func (peer *Peer) RXTimeout() {
 	peer.mu.RLock()
 	initiator := peer.noise.initiator
 	peer.mu.RUnlock()
+
 	if !initiator {
 		log.Println("RX Timeout but not initiator, resetting peer state")
 		peer.timers.receivedPacket.Stop()

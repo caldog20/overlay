@@ -17,7 +17,7 @@ import (
 
 const (
 	// Timers
-	TimerHandshakeTimeout = time.Second * 3
+	TimerHandshakeTimeout = time.Second * 5
 	TimerRxTimeout        = time.Second * 15
 	TimerKeepalive        = time.Second * 10
 	// Counts
@@ -38,7 +38,7 @@ type Peer struct {
 		hs        *noise.HandshakeState
 		rx        *noise.CipherState
 		tx        *noise.CipherState
-		state     atomic.Uint64 // probably doesn't need to be atomic
+		state     atomic.Uint64 // probably doesn't need to be atomic, noise struct needs it's own lock
 		initiator bool
 		pubkey    []byte
 		txNonce   atomic.Uint64
@@ -72,7 +72,7 @@ func NewPeer() *Peer {
 
 	// channels
 	peer.inbound = make(chan *InboundBuffer, 16)   // buffered number???
-	peer.outbound = make(chan *OutboundBuffer, 16) // allow up to 16 packets to be cached/pending handshake???
+	peer.outbound = make(chan *OutboundBuffer, 64) // allow up to 64 packets to be cached/pending handshake???
 	peer.handshakes = make(chan *InboundBuffer, 3) // Handshake packet buffering???
 
 	peer.timers.handshakeSent = time.AfterFunc(TimerHandshakeTimeout, peer.HandshakeTimeout)
@@ -110,10 +110,12 @@ func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	peer.noise.pubkey, err = DecodeBase64Key(peerInfo.Key)
 	if err != nil {
 		return nil, err
 	}
+
 	peer.Hostname = peerInfo.Hostname
 
 	peer.raddr, err = net.ResolveUDPAddr("udp4", peerInfo.Endpoint)

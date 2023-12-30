@@ -40,3 +40,19 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 - Eventually support ipv6 inside and outside the tunnel
 
 - Protect peer endpoint better with synchronization
+
+
+- Define rules for peers and peer updates
+  - What updates should be received from controller after initial state pull?
+    - How do these updates affect active peers?
+  - How can we track connected/disconnected state and should peers track this state for remote peers
+  - Add an ability similar to ICE for peers to negotiate ip:port pairs to connect to each other with
+    - This should solve peers on the same local network as well
+  - Initial handshake on outbound traffic
+  - After so many keepalives without any real data, close the peer
+
+- Peer Timers and handshake initiation rules: (inspired by WireGuard protocol)
+  - A handshake is only initiated when outbound traffic is queued for a remote peer
+  - if handshake needs to retry after session was alive, retry x times then reset peer state and idle, unless more outbound data is queued
+  - If no data has been sent in x time, and we haven't received a keepalive, send keepalive
+  - if no data has been receieved after x time, and we haven't received a keepalive, send keepalive
