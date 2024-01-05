@@ -1,5 +1,5 @@
 GOVER := $(shell go version)
-CGO := 1
+CGO := 0
 
 GOOS    := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 GOARCH  := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
@@ -36,10 +36,10 @@ server:
 peer:
 	$(GOBUILD) $(LDFLAGS) -o ./bin/node ./cmd/node
 
-server-mips:
-	GOOS=linux GOARCH=mipsle go build $(LDFLAGS) -o ./bin/controller ./cmd/controller
-	scp ./bin/controller root@10.170.241.1:~
-	ssh root@10.170.241.1 -t './controller'
+server:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o ./bin/controller ./cmd/controller
+	scp ./bin/controller ./.env yatesca@10.170.241.66:~
+	ssh yatesca@10.170.241.66 -t 'sudo ./controller'
 
 peer-test:
 	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ./bin/node ./cmd/node
@@ -54,9 +54,9 @@ peer-test2:
 #	$(GOTEST) `go list ./... | grep -v tools | grep -v systray`
 
 protogen:
-	echo "Generating protobuf and twirp code"
+	echo "Generating protobuf and grpc code"
 	#@protoc --proto_path=msg --go_out=msg --go_opt=paths=source_relative --go-grpc_out=msg --go-grpc_opt=paths=source_relative msg/*.proto
-	@protoc --proto_path=proto --go_out=proto --go_opt=paths=source_relative --twirp_out=proto  --twirp_opt=paths=source_relative proto/control.proto
+	@protoc --proto_path=proto --go_out=proto --go_opt=paths=source_relative --go-grpc_out=proto  --go-grpc_opt=paths=source_relative proto/control.proto
 
 fmt:
 	@echo "gofmt (simplify)"

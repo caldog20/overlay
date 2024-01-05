@@ -5,14 +5,16 @@ import (
 	"errors"
 	"log"
 	"net"
-	"net/http"
 	"net/netip"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
 
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/caldog20/overlay/proto"
 )
@@ -36,7 +38,7 @@ type Node struct {
 
 	running atomic.Bool
 
-	controller proto.Controller
+	controller proto.ControlPlaneClient
 	// Temp
 	port           uint16
 	controllerAddr string
@@ -87,19 +89,25 @@ func NewNode(port uint16, controller string) (*Node, error) {
 		return nil, err
 	}
 
-	node.controller = proto.NewControllerProtobufClient(controller, &http.Client{})
+	gconn, err := grpc.Dial(controller, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node.controller = proto.NewControlPlaneClient(gconn)
+
 	node.controllerAddr = controller
 	return node, nil
 }
 
 func (node *Node) Run(ctx context.Context) {
 	// Register with controller
-	err := node.Register()
+	err := node.Login()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	node.UpdateNodes()
+	//node.UpdateNodes()
 
 	// Configure tunnel ip/routes
 	err = node.tun.ConfigureInterface(node.ip)
@@ -107,7 +115,8 @@ func (node *Node) Run(ctx context.Context) {
 		log.Fatal(err)
 	}
 
-	go node.CheckPunches()
+	os.Exit(0)
+	//go node.CheckPunches()
 	go node.conn.ReadPackets(node.OnUDPPacket, 0)
 	go node.tun.ReadPackets(node.OnTunnelPacket)
 
@@ -141,7 +150,7 @@ func (node *Node) OnUDPPacket(buffer *InboundBuffer, index int) {
 		// Peer not found in table, ask for update and try again later?
 		PutInboundBuffer(buffer)
 		log.Printf("[inbound] peer with index %d not found", sender)
-		node.UpdateNodes()
+		//node.UpdateNodes()
 		return
 	}
 
@@ -208,7 +217,7 @@ func (node *Node) OnTunnelPacket(buffer *OutboundBuffer) {
 		// peer not found, drop
 		log.Printf("[outbound] peer with ip %s not found", dst.String())
 		PutOutboundBuffer(buffer)
-		node.UpdateNodes()
+		//node.UpdateNodes()
 		return
 	}
 

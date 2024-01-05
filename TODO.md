@@ -53,6 +53,24 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 
 - Peer Timers and handshake initiation rules: (inspired by WireGuard protocol)
   - A handshake is only initiated when outbound traffic is queued for a remote peer
-  - if handshake needs to retry after session was alive, retry x times then reset peer state and idle, unless more outbound data is queued
+  - if handshake needs to retry after session was alive, if initiator, retry x times then reset peer state and idle, unless more outbound data is queued
   - If no data has been sent in x time, and we haven't received a keepalive, send keepalive
-  - if no data has been receieved after x time, and we haven't received a keepalive, send keepalive
+  - if no data has been received after x time, and we haven't received a keepalive, send keepalive
+
+
+- Redesign controller and organize components:
+  - Rest API
+    - Authentication/JWT
+    - Portal API
+    - Peer Management/Status
+    - Logging/Metrics from Peers
+    - Policies
+  - GRPC API
+    - Login/Register Peer
+    - Connection Status
+    - Peer Updates
+    - DNS Queries
+    - Peer Configuration
+  - Database/Store
+    - Mock database for now using maps/etc
+    - convert to sqlite

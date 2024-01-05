@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -12,8 +11,7 @@ import (
 )
 
 func main() {
-	port := flag.String("port", "8080", "port for http server")
-	flag.Parse()
+	config, err := controller.GetConfig()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -23,6 +21,10 @@ func main() {
 		cancel()
 	}()
 
-	c := controller.NewController()
-	c.RunController(ctx, *port)
+	c, err := controller.NewController(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c.RunController(ctx)
 }

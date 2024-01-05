@@ -32,3 +32,4 @@ patches/
 
 # Other Stuff
 .DS_Store
+*.db

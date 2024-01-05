@@ -1,103 +1,85 @@
 syntax = "proto3";
 
 package proto;
+
 option go_package = "github.com/caldog20/overlay/proto";
 
-// Service for Controller
-service Controller {
-  rpc Register(RegisterRequest) returns (RegisterResponse);
-  //  rpc GetUpdate(UpdateRequest) returns (UpdateResponse);
-  rpc NodeList(NodeListRequest) returns (NodeListResponse);
-  rpc NodeQuery(NodeQueryRequest) returns (Node);
-  rpc PunchRequester(PunchRequest) returns (PunchReply);
-  rpc PunchChecker(PunchCheck) returns (Punch);
+service ControlPlane {
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+  rpc Updater(UpdateRequest) returns (stream Update) {}
+  rpc Punch(PunchRequest) returns (PunchReply) {}
 }
 
+message LoginRequest {
+  string public_key = 1;
+  Endpoint endpoint = 2;
+}
 
-// Connects node to control plane
-// If node is not registered, adds key to pending list on server
+message LoginResponse {
+  uint32 id = 1;
+  PeerConfig config = 2;
+}
+
 message RegisterRequest {
-  string key = 1;
-  string hostname = 2;
-  string endpoint = 3;
+  string public_key = 1;
+  string token = 2;
 }
 
 message RegisterResponse {
-  uint32 id = 1;
-  string ip = 2;
+  string status = 1;
 }
 
-message Node {
-  uint32 id = 1;
-  string ip = 2;
-  string hostname = 3;
-  string endpoint = 4;
-  string key = 5;
-}
-
-message NodeListRequest {
+message UpdateRequest {
   uint32 id = 1;
 }
 
-message NodeListResponse {
+message Update {
+  enum Type {
+    NONE = 0;
+    PUNCH = 1;
+    CONFIG = 2;
+    PEER_CONNECT = 3;
+    PEER_DISCONNECT = 4;
+    PEER_UPDATE = 5;
+  }
+
+  uint32 id = 1;
+  oneof update {
+    PeerConfig peer_config = 2;
+    RemotePeers remote_peers = 3;
+    PunchRequest punch_request = 4;
+  }
+
+}
+
+message PeerConfig {
+  string tunnel_ip = 1;
+  //string network = 2;
+}
+
+message RemotePeers {
   uint32 count = 1;
-  repeated Node nodes = 2;
+  repeated RemotePeer remote_peers = 2;
 }
 
-message NodeQueryRequest {
-  uint32 req_id = 1;
-  optional uint32 node_id = 2;
-  optional string node_ip = 3;
+message RemotePeer {
+  uint32 id = 1;
+  string public_key = 2;
+  string tunnel_ip = 3;
+  repeated Endpoint endpoints = 4;
+}
+
+message Endpoint {
+  string endpoint = 1;
+}
+
+message DiscoverEndpoint {
+  uint32 id = 1;
 }
 
 message PunchRequest {
-  uint32 req_id = 1;
-  uint32 remote_id = 2;
+  Endpoint endpoint = 1;
 }
 
-message PunchReply {
-  bool status = 1;
-}
-
-message Punch {
-  string remote = 1;
-}
-
-message PunchCheck {
-  uint32 req_id = 1;
-}
-
-//enum UpdateType {
-//  NONE = 0;
-//  NODES = 1;
-//  NODE_DELEte = 2;
-//}
-//
-//message NodeUpdate {
-//  uint32 id = 1;
-//  optional string ip = 2;
-//  optional string hostname = 3;
-//  optional string endpoint = 4; // make repeated later or type
-//  optional string key = 5;
-//}
-//
-//message NodeDelete {
-//  uint32 id = 1;
-//}
-//
-////message NodeUpdate {
-////  repeated Node nodes = 1;
-////}
-//
-//message UpdateRequest {
-//  uint32 id = 1;
-//}
-//
-//message UpdateResponse {
-//  UpdateType type = 1;
-//
-//  oneof update {
-//    NodeUpdate node_update = 2;
-//    NodeDelete node_delete = 3;
-//  }
-//}
+message PunchReply {}

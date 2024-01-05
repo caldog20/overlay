@@ -108,7 +108,7 @@ func (peer *Peer) UpdateEndpointLocked(addr *net.UDPAddr) {
 func (peer *Peer) RequestPunch() {
 	peer.mu.RLock()
 	defer peer.mu.RUnlock()
-	peer.node.RequestPunch(peer.ID)
+	//peer.node.RequestPunch(peer.ID)
 }
 
 func (peer *Peer) TrySendHandshake(retry bool) {
