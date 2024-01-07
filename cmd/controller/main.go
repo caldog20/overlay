@@ -11,7 +11,17 @@ import (
 )
 
 func main() {
-	config, err := controller.GetConfig()
+	//config, err := controller.GetConfig()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	store, err := controller.NewStore("data.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctrl := controller.NewController(store)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -21,10 +31,10 @@ func main() {
 		cancel()
 	}()
 
-	c, err := controller.NewController(config)
+	go controller.StartDiscoveryServer(ctx)
+
+	err = ctrl.Run(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	c.RunController(ctx)
 }

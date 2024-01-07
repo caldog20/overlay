@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/caldog20/overlay/proto"
 	"github.com/flynn/noise"
 )
 
@@ -92,43 +93,43 @@ func NewPeer() *Peer {
 }
 
 // TODO Proper error text for context around the issue
-//func (node *Node) AddPeer(peerInfo *proto.Node) (*Peer, error) {
-//	peer := NewPeer()
-//
-//	peer.mu.Lock()
-//	defer peer.mu.Unlock()
-//
-//	peer.node = node
-//
-//	var err error
-//
-//	// TODO Fix this
-//	peer.ID = peerInfo.Id
-//	peer.IP, err = ParseAddr(peerInfo.Ip)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	peer.noise.pubkey, err = DecodeBase64Key(peerInfo.Key)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	peer.Hostname = peerInfo.Hostname
-//
-//	peer.raddr, err = net.ResolveUDPAddr("udp4", peerInfo.Endpoint)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	// TODO Add methods to manipulate map
-//	node.maps.l.Lock()
-//	defer node.maps.l.Unlock()
-//	node.maps.id[peer.ID] = peer
-//	node.maps.ip[peer.IP] = peer
-//
-//	return peer, nil
-//}
+func (node *Node) AddPeer(peerInfo *proto.RemotePeer) (*Peer, error) {
+	peer := NewPeer()
+
+	peer.mu.Lock()
+	defer peer.mu.Unlock()
+
+	peer.node = node
+
+	var err error
+
+	// TODO Fix this
+	peer.ID = peerInfo.Id
+	peer.IP, err = ParseAddr(peerInfo.TunnelIp)
+	if err != nil {
+		return nil, err
+	}
+
+	peer.noise.pubkey, err = DecodeBase64Key(peerInfo.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	//peer.Hostname = peerInfo.Hostname
+
+	peer.raddr, err = net.ResolveUDPAddr("udp4", peerInfo.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO Add methods to manipulate map
+	node.maps.l.Lock()
+	defer node.maps.l.Unlock()
+	node.maps.id[peer.ID] = peer
+	node.maps.ip[peer.IP] = peer
+
+	return peer, nil
+}
 
 func (peer *Peer) Start() error {
 	peer.mu.Lock()

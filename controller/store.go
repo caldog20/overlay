@@ -1,108 +1,121 @@
 package controller
 
 import (
-	"errors"
-	//"database/sql"
-	"fmt"
+	"sync"
 
-	"gorm.io/driver/sqlite"
-	//"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	//_ "github.com/mattn/go-sqlite3"
 )
 
-type Store struct {
-	db *gorm.DB
+type Store interface {
+	GetPeers() ([]Peer, error)
+	GetPeerByID(id uint32) (*Peer, error)
+	GetPeerByKey(key string) (*Peer, error)
+	GetPeerIPs() ([]string, error)
+	CreatePeer(peer *Peer) error
+	UpdatePeer(peer *Peer) error
+	GetConnectedPeers() ([]Peer, error)
+	UpdatePeerEndpoint(id uint32, endpoint string) error
+	UpatePeerStatus(id uint32, connected bool) error
 }
 
-func NewStore(path string) (*Store, error) {
-	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?cache=shared&_journal_mode=WAL", path)), &gorm.Config{
-		PrepareStmt: true, Logger: logger.Default.LogMode(logger.Info),
+type IPAllocation struct {
+	gorm.Model
+	IP        string
+	Allocated bool
+}
+
+type MapStore struct {
+	// primary key is uint32 ID
+	m sync.Map
+}
+
+func (s *MapStore) GetPeerIPs() ([]string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func NewMapStore() Store {
+	return &MapStore{m: sync.Map{}}
+}
+
+func (s *MapStore) GetPeers() ([]Peer, error) {
+	var peers []Peer
+	s.m.Range(func(k, v interface{}) bool {
+		p := v.(*Peer)
+		peers = append(peers, Peer{
+			ID:        p.ID,
+			IP:        p.IP,
+			PublicKey: p.PublicKey,
+			Endpoint:  p.Endpoint,
+			Connected: p.Connected,
+			CreatedAt: p.CreatedAt,
+			UpdatedAt: p.UpdatedAt,
+		})
+		return true
 	})
-	if err != nil {
-		return nil, err
-	}
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
-
-	sqlDB.SetMaxIdleConns(3)
-
-	err = sqlDB.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Store{db: db}, nil
+	return peers, nil
 }
 
-func (s *Store) Migrate() error {
-	err := s.db.AutoMigrate(&Peer{})
-	if err != nil {
-		return errors.New("Error during auto migration of database")
+func (s *MapStore) GetPeerByID(id uint32) (*Peer, error) {
+	p, ok := s.m.Load(id)
+	if !ok {
+		return nil, ErrNotFound
+	}
+	peer, ok := p.(*Peer)
+	if !ok {
+		return nil, ErrCastingObject
+	}
+
+	return peer, nil
+}
+
+func (s *MapStore) GetPeerByKey(key string) (*Peer, error) {
+	var peer *Peer
+
+	s.m.Range(func(k, v interface{}) bool {
+		p := v.(*Peer)
+		if p.PublicKey == key {
+			peer = p
+			return false
+		}
+		return true
+	})
+
+	if peer == nil {
+		return nil, ErrNotFound
+	}
+	return peer, nil
+}
+
+func (s *MapStore) CreatePeer(peer *Peer) error {
+	_, existing := s.m.LoadOrStore(peer.ID, peer)
+	if existing {
+		return ErrAlreadyExists
 	}
 	return nil
 }
 
-func (s *Store) CreatePeer(peer *Peer) error {
-	return s.db.Create(peer).Error
-}
-
-func (s *Store) CreateOrUpdatePeer(peer *Peer) error {
-	return s.db.Save(peer).Error
-}
-
-func (s *Store) GetAllPeers() ([]Peer, error) {
-	var peers []Peer
-	result := s.db.Find(&peers)
-	if result.Error != nil {
-		return nil, result.Error
+func (s *MapStore) UpdatePeer(peer *Peer) error {
+	_, existing := s.m.Load(peer.ID)
+	if !existing {
+		return ErrNotFound
 	}
-	return peers, nil
+	s.m.Store(peer.ID, peer)
+	return nil
 }
 
-func (s *Store) GetPeerByID(id uint32) (*Peer, error) {
-	var p Peer
-	if err := s.db.First(&p, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &p, nil
+func (s *MapStore) GetConnectedPeers() ([]Peer, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (s *Store) GetPeerByKey(key string) (*Peer, error) {
-	var p Peer
-	if err := s.db.Where(&Peer{PubKey: key}).First(&p).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &p, nil
+func (s *MapStore) UpdatePeerEndpoint(id uint32, endpoint string) error {
+	//TODO implement me
+	panic("implement me")
 }
 
-func (s *Store) UpdatePeer(peer *Peer) error {
-	return s.db.Model(peer).Updates(peer).Error
-}
-
-func (s *Store) UpdatePeerConnectedByID(id uint32, connected bool) error {
-	return s.db.Model(&Peer{}).Where("id = ?", id).Update("connected", connected).Error
-}
-
-func (s *Store) UpdatePeerConnected(peer *Peer) error {
-	return s.db.Model(peer).Update("connected", peer.Connected).Error
-}
-
-func (s *Store) GetAllIPs() ([]string, error) {
-	var IPs []string
-	err := s.db.Model(&Peer{}).Pluck("ip", &IPs).Error
-	if err != nil {
-		return nil, err
-	}
-	return IPs, nil
+func (s *MapStore) UpatePeerStatus(id uint32, connected bool) error {
+	//TODO implement me
+	panic("implement me")
 }

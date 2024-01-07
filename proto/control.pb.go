@@ -20,62 +20,56 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Update_Type int32
+type UpdateResponse_UpdateType int32
 
 const (
-	Update_NONE            Update_Type = 0
-	Update_PUNCH           Update_Type = 1
-	Update_CONFIG          Update_Type = 2
-	Update_PEER_CONNECT    Update_Type = 3
-	Update_PEER_DISCONNECT Update_Type = 4
-	Update_PEER_UPDATE     Update_Type = 5
+	UpdateResponse_INIT       UpdateResponse_UpdateType = 0
+	UpdateResponse_CONNECT    UpdateResponse_UpdateType = 1
+	UpdateResponse_DISCONNECT UpdateResponse_UpdateType = 2
+	UpdateResponse_PUNCH      UpdateResponse_UpdateType = 3
 )
 
-// Enum value maps for Update_Type.
+// Enum value maps for UpdateResponse_UpdateType.
 var (
-	Update_Type_name = map[int32]string{
-		0: "NONE",
-		1: "PUNCH",
-		2: "CONFIG",
-		3: "PEER_CONNECT",
-		4: "PEER_DISCONNECT",
-		5: "PEER_UPDATE",
+	UpdateResponse_UpdateType_name = map[int32]string{
+		0: "INIT",
+		1: "CONNECT",
+		2: "DISCONNECT",
+		3: "PUNCH",
 	}
-	Update_Type_value = map[string]int32{
-		"NONE":            0,
-		"PUNCH":           1,
-		"CONFIG":          2,
-		"PEER_CONNECT":    3,
-		"PEER_DISCONNECT": 4,
-		"PEER_UPDATE":     5,
+	UpdateResponse_UpdateType_value = map[string]int32{
+		"INIT":       0,
+		"CONNECT":    1,
+		"DISCONNECT": 2,
+		"PUNCH":      3,
 	}
 )
 
-func (x Update_Type) Enum() *Update_Type {
-	p := new(Update_Type)
+func (x UpdateResponse_UpdateType) Enum() *UpdateResponse_UpdateType {
+	p := new(UpdateResponse_UpdateType)
 	*p = x
 	return p
 }
 
-func (x Update_Type) String() string {
+func (x UpdateResponse_UpdateType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (Update_Type) Descriptor() protoreflect.EnumDescriptor {
+func (UpdateResponse_UpdateType) Descriptor() protoreflect.EnumDescriptor {
 	return file_control_proto_enumTypes[0].Descriptor()
 }
 
-func (Update_Type) Type() protoreflect.EnumType {
+func (UpdateResponse_UpdateType) Type() protoreflect.EnumType {
 	return &file_control_proto_enumTypes[0]
 }
 
-func (x Update_Type) Number() protoreflect.EnumNumber {
+func (x UpdateResponse_UpdateType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use Update_Type.Descriptor instead.
-func (Update_Type) EnumDescriptor() ([]byte, []int) {
-	return file_control_proto_rawDescGZIP(), []int{5, 0}
+// Deprecated: Use UpdateResponse_UpdateType.Descriptor instead.
+func (UpdateResponse_UpdateType) EnumDescriptor() ([]byte, []int) {
+	return file_control_proto_rawDescGZIP(), []int{10, 0}
 }
 
 type LoginRequest struct {
@@ -83,8 +77,7 @@ type LoginRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PublicKey string    `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Endpoint  *Endpoint `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	PublicKey string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 }
 
 func (x *LoginRequest) Reset() {
@@ -126,20 +119,12 @@ func (x *LoginRequest) GetPublicKey() string {
 	return ""
 }
 
-func (x *LoginRequest) GetEndpoint() *Endpoint {
-	if x != nil {
-		return x.Endpoint
-	}
-	return nil
-}
-
 type LoginResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id     uint32      `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Config *PeerConfig `protobuf:"bytes,2,opt,name=config,proto3" json:"config,omitempty"`
+	Config *PeerConfig `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
 }
 
 func (x *LoginResponse) Reset() {
@@ -174,13 +159,6 @@ func (*LoginResponse) Descriptor() ([]byte, []int) {
 	return file_control_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *LoginResponse) GetId() uint32 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
 func (x *LoginResponse) GetConfig() *PeerConfig {
 	if x != nil {
 		return x.Config
@@ -188,270 +166,19 @@ func (x *LoginResponse) GetConfig() *PeerConfig {
 	return nil
 }
 
-type RegisterRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	PublicKey string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Token     string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-}
-
-func (x *RegisterRequest) Reset() {
-	*x = RegisterRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_control_proto_msgTypes[2]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RegisterRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RegisterRequest) ProtoMessage() {}
-
-func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_control_proto_msgTypes[2]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
-func (*RegisterRequest) Descriptor() ([]byte, []int) {
-	return file_control_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *RegisterRequest) GetPublicKey() string {
-	if x != nil {
-		return x.PublicKey
-	}
-	return ""
-}
-
-func (x *RegisterRequest) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
-}
-
-type RegisterResponse struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Status string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-}
-
-func (x *RegisterResponse) Reset() {
-	*x = RegisterResponse{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_control_proto_msgTypes[3]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RegisterResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RegisterResponse) ProtoMessage() {}
-
-func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_control_proto_msgTypes[3]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
-func (*RegisterResponse) Descriptor() ([]byte, []int) {
-	return file_control_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *RegisterResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-type UpdateRequest struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-}
-
-func (x *UpdateRequest) Reset() {
-	*x = UpdateRequest{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_control_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *UpdateRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*UpdateRequest) ProtoMessage() {}
-
-func (x *UpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_control_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use UpdateRequest.ProtoReflect.Descriptor instead.
-func (*UpdateRequest) Descriptor() ([]byte, []int) {
-	return file_control_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *UpdateRequest) GetId() uint32 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-type Update struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	// Types that are assignable to Update:
-	//
-	//	*Update_PeerConfig
-	//	*Update_RemotePeers
-	//	*Update_PunchRequest
-	Update isUpdate_Update `protobuf_oneof:"update"`
-}
-
-func (x *Update) Reset() {
-	*x = Update{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_control_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *Update) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Update) ProtoMessage() {}
-
-func (x *Update) ProtoReflect() protoreflect.Message {
-	mi := &file_control_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Update.ProtoReflect.Descriptor instead.
-func (*Update) Descriptor() ([]byte, []int) {
-	return file_control_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *Update) GetId() uint32 {
-	if x != nil {
-		return x.Id
-	}
-	return 0
-}
-
-func (m *Update) GetUpdate() isUpdate_Update {
-	if m != nil {
-		return m.Update
-	}
-	return nil
-}
-
-func (x *Update) GetPeerConfig() *PeerConfig {
-	if x, ok := x.GetUpdate().(*Update_PeerConfig); ok {
-		return x.PeerConfig
-	}
-	return nil
-}
-
-func (x *Update) GetRemotePeers() *RemotePeers {
-	if x, ok := x.GetUpdate().(*Update_RemotePeers); ok {
-		return x.RemotePeers
-	}
-	return nil
-}
-
-func (x *Update) GetPunchRequest() *PunchRequest {
-	if x, ok := x.GetUpdate().(*Update_PunchRequest); ok {
-		return x.PunchRequest
-	}
-	return nil
-}
-
-type isUpdate_Update interface {
-	isUpdate_Update()
-}
-
-type Update_PeerConfig struct {
-	PeerConfig *PeerConfig `protobuf:"bytes,2,opt,name=peer_config,json=peerConfig,proto3,oneof"`
-}
-
-type Update_RemotePeers struct {
-	RemotePeers *RemotePeers `protobuf:"bytes,3,opt,name=remote_peers,json=remotePeers,proto3,oneof"`
-}
-
-type Update_PunchRequest struct {
-	PunchRequest *PunchRequest `protobuf:"bytes,4,opt,name=punch_request,json=punchRequest,proto3,oneof"`
-}
-
-func (*Update_PeerConfig) isUpdate_Update() {}
-
-func (*Update_RemotePeers) isUpdate_Update() {}
-
-func (*Update_PunchRequest) isUpdate_Update() {}
-
 type PeerConfig struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	TunnelIp string `protobuf:"bytes,1,opt,name=tunnel_ip,json=tunnelIp,proto3" json:"tunnel_ip,omitempty"` //string network = 2;
+	Id       uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	TunnelIp string `protobuf:"bytes,2,opt,name=tunnel_ip,json=tunnelIp,proto3" json:"tunnel_ip,omitempty"`
 }
 
 func (x *PeerConfig) Reset() {
 	*x = PeerConfig{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_control_proto_msgTypes[6]
+		mi := &file_control_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -464,7 +191,7 @@ func (x *PeerConfig) String() string {
 func (*PeerConfig) ProtoMessage() {}
 
 func (x *PeerConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_control_proto_msgTypes[6]
+	mi := &file_control_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -477,7 +204,14 @@ func (x *PeerConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PeerConfig.ProtoReflect.Descriptor instead.
 func (*PeerConfig) Descriptor() ([]byte, []int) {
-	return file_control_proto_rawDescGZIP(), []int{6}
+	return file_control_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PeerConfig) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
 }
 
 func (x *PeerConfig) GetTunnelIp() string {
@@ -487,17 +221,203 @@ func (x *PeerConfig) GetTunnelIp() string {
 	return ""
 }
 
-type RemotePeers struct {
+type RegisterRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Count       uint32        `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
-	RemotePeers []*RemotePeer `protobuf:"bytes,2,rep,name=remote_peers,json=remotePeers,proto3" json:"remote_peers,omitempty"`
+	PublicKey   string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	RegisterKey string `protobuf:"bytes,2,opt,name=register_key,json=registerKey,proto3" json:"register_key,omitempty"`
 }
 
-func (x *RemotePeers) Reset() {
-	*x = RemotePeers{}
+func (x *RegisterRequest) Reset() {
+	*x = RegisterRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_control_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RegisterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterRequest) ProtoMessage() {}
+
+func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_control_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
+func (*RegisterRequest) Descriptor() ([]byte, []int) {
+	return file_control_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RegisterRequest) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetRegisterKey() string {
+	if x != nil {
+		return x.RegisterKey
+	}
+	return ""
+}
+
+type RegisterResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *RegisterResponse) Reset() {
+	*x = RegisterResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_control_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RegisterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterResponse) ProtoMessage() {}
+
+func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_control_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
+func (*RegisterResponse) Descriptor() ([]byte, []int) {
+	return file_control_proto_rawDescGZIP(), []int{4}
+}
+
+type Endpoint struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id       uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Endpoint string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+}
+
+func (x *Endpoint) Reset() {
+	*x = Endpoint{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_control_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Endpoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Endpoint) ProtoMessage() {}
+
+func (x *Endpoint) ProtoReflect() protoreflect.Message {
+	mi := &file_control_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Endpoint.ProtoReflect.Descriptor instead.
+func (*Endpoint) Descriptor() ([]byte, []int) {
+	return file_control_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Endpoint) GetId() uint32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *Endpoint) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+type EmptyResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *EmptyResponse) Reset() {
+	*x = EmptyResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_control_proto_msgTypes[6]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *EmptyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmptyResponse) ProtoMessage() {}
+
+func (x *EmptyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_control_proto_msgTypes[6]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmptyResponse.ProtoReflect.Descriptor instead.
+func (*EmptyResponse) Descriptor() ([]byte, []int) {
+	return file_control_proto_rawDescGZIP(), []int{6}
+}
+
+type RemotePeerList struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Count      uint32        `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	RemotePeer []*RemotePeer `protobuf:"bytes,2,rep,name=remote_peer,json=remotePeer,proto3" json:"remote_peer,omitempty"`
+}
+
+func (x *RemotePeerList) Reset() {
+	*x = RemotePeerList{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_control_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -505,13 +425,13 @@ func (x *RemotePeers) Reset() {
 	}
 }
 
-func (x *RemotePeers) String() string {
+func (x *RemotePeerList) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RemotePeers) ProtoMessage() {}
+func (*RemotePeerList) ProtoMessage() {}
 
-func (x *RemotePeers) ProtoReflect() protoreflect.Message {
+func (x *RemotePeerList) ProtoReflect() protoreflect.Message {
 	mi := &file_control_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -523,21 +443,21 @@ func (x *RemotePeers) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemotePeers.ProtoReflect.Descriptor instead.
-func (*RemotePeers) Descriptor() ([]byte, []int) {
+// Deprecated: Use RemotePeerList.ProtoReflect.Descriptor instead.
+func (*RemotePeerList) Descriptor() ([]byte, []int) {
 	return file_control_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *RemotePeers) GetCount() uint32 {
+func (x *RemotePeerList) GetCount() uint32 {
 	if x != nil {
 		return x.Count
 	}
 	return 0
 }
 
-func (x *RemotePeers) GetRemotePeers() []*RemotePeer {
+func (x *RemotePeerList) GetRemotePeer() []*RemotePeer {
 	if x != nil {
-		return x.RemotePeers
+		return x.RemotePeer
 	}
 	return nil
 }
@@ -547,10 +467,10 @@ type RemotePeer struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id        uint32      `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	PublicKey string      `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	TunnelIp  string      `protobuf:"bytes,3,opt,name=tunnel_ip,json=tunnelIp,proto3" json:"tunnel_ip,omitempty"`
-	Endpoints []*Endpoint `protobuf:"bytes,4,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
+	Id        uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	PublicKey string `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Endpoint  string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	TunnelIp  string `protobuf:"bytes,4,opt,name=tunnel_ip,json=tunnelIp,proto3" json:"tunnel_ip,omitempty"`
 }
 
 func (x *RemotePeer) Reset() {
@@ -599,6 +519,13 @@ func (x *RemotePeer) GetPublicKey() string {
 	return ""
 }
 
+func (x *RemotePeer) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
 func (x *RemotePeer) GetTunnelIp() string {
 	if x != nil {
 		return x.TunnelIp
@@ -606,23 +533,16 @@ func (x *RemotePeer) GetTunnelIp() string {
 	return ""
 }
 
-func (x *RemotePeer) GetEndpoints() []*Endpoint {
-	if x != nil {
-		return x.Endpoints
-	}
-	return nil
-}
-
-type Endpoint struct {
+type UpdateRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *Endpoint) Reset() {
-	*x = Endpoint{}
+func (x *UpdateRequest) Reset() {
+	*x = UpdateRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_control_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -630,13 +550,13 @@ func (x *Endpoint) Reset() {
 	}
 }
 
-func (x *Endpoint) String() string {
+func (x *UpdateRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Endpoint) ProtoMessage() {}
+func (*UpdateRequest) ProtoMessage() {}
 
-func (x *Endpoint) ProtoReflect() protoreflect.Message {
+func (x *UpdateRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_control_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -648,28 +568,29 @@ func (x *Endpoint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Endpoint.ProtoReflect.Descriptor instead.
-func (*Endpoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdateRequest.ProtoReflect.Descriptor instead.
+func (*UpdateRequest) Descriptor() ([]byte, []int) {
 	return file_control_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *Endpoint) GetEndpoint() string {
+func (x *UpdateRequest) GetId() uint32 {
 	if x != nil {
-		return x.Endpoint
+		return x.Id
 	}
-	return ""
+	return 0
 }
 
-type DiscoverEndpoint struct {
+type UpdateResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	UpdateType UpdateResponse_UpdateType `protobuf:"varint,1,opt,name=update_type,json=updateType,proto3,enum=proto.UpdateResponse_UpdateType" json:"update_type,omitempty"`
+	PeerList   *RemotePeerList           `protobuf:"bytes,2,opt,name=peer_list,json=peerList,proto3" json:"peer_list,omitempty"`
 }
 
-func (x *DiscoverEndpoint) Reset() {
-	*x = DiscoverEndpoint{}
+func (x *UpdateResponse) Reset() {
+	*x = UpdateResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_control_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -677,13 +598,13 @@ func (x *DiscoverEndpoint) Reset() {
 	}
 }
 
-func (x *DiscoverEndpoint) String() string {
+func (x *UpdateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DiscoverEndpoint) ProtoMessage() {}
+func (*UpdateResponse) ProtoMessage() {}
 
-func (x *DiscoverEndpoint) ProtoReflect() protoreflect.Message {
+func (x *UpdateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_control_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -695,28 +616,35 @@ func (x *DiscoverEndpoint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DiscoverEndpoint.ProtoReflect.Descriptor instead.
-func (*DiscoverEndpoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdateResponse.ProtoReflect.Descriptor instead.
+func (*UpdateResponse) Descriptor() ([]byte, []int) {
 	return file_control_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *DiscoverEndpoint) GetId() uint32 {
+func (x *UpdateResponse) GetUpdateType() UpdateResponse_UpdateType {
 	if x != nil {
-		return x.Id
+		return x.UpdateType
 	}
-	return 0
+	return UpdateResponse_INIT
 }
 
-type PunchRequest struct {
+func (x *UpdateResponse) GetPeerList() *RemotePeerList {
+	if x != nil {
+		return x.PeerList
+	}
+	return nil
+}
+
+type EndpointDiscovery struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Endpoint *Endpoint `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	Id uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *PunchRequest) Reset() {
-	*x = PunchRequest{}
+func (x *EndpointDiscovery) Reset() {
+	*x = EndpointDiscovery{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_control_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -724,13 +652,13 @@ func (x *PunchRequest) Reset() {
 	}
 }
 
-func (x *PunchRequest) String() string {
+func (x *EndpointDiscovery) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PunchRequest) ProtoMessage() {}
+func (*EndpointDiscovery) ProtoMessage() {}
 
-func (x *PunchRequest) ProtoReflect() protoreflect.Message {
+func (x *EndpointDiscovery) ProtoReflect() protoreflect.Message {
 	mi := &file_control_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -742,26 +670,28 @@ func (x *PunchRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PunchRequest.ProtoReflect.Descriptor instead.
-func (*PunchRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use EndpointDiscovery.ProtoReflect.Descriptor instead.
+func (*EndpointDiscovery) Descriptor() ([]byte, []int) {
 	return file_control_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *PunchRequest) GetEndpoint() *Endpoint {
+func (x *EndpointDiscovery) GetId() uint32 {
 	if x != nil {
-		return x.Endpoint
+		return x.Id
 	}
-	return nil
+	return 0
 }
 
-type PunchReply struct {
+type EndpointDiscoveryResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 }
 
-func (x *PunchReply) Reset() {
-	*x = PunchReply{}
+func (x *EndpointDiscoveryResponse) Reset() {
+	*x = EndpointDiscoveryResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_control_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -769,13 +699,13 @@ func (x *PunchReply) Reset() {
 	}
 }
 
-func (x *PunchReply) String() string {
+func (x *EndpointDiscoveryResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PunchReply) ProtoMessage() {}
+func (*EndpointDiscoveryResponse) ProtoMessage() {}
 
-func (x *PunchReply) ProtoReflect() protoreflect.Message {
+func (x *EndpointDiscoveryResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_control_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -787,99 +717,96 @@ func (x *PunchReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PunchReply.ProtoReflect.Descriptor instead.
-func (*PunchReply) Descriptor() ([]byte, []int) {
+// Deprecated: Use EndpointDiscoveryResponse.ProtoReflect.Descriptor instead.
+func (*EndpointDiscoveryResponse) Descriptor() ([]byte, []int) {
 	return file_control_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *EndpointDiscoveryResponse) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
 }
 
 var File_control_proto protoreflect.FileDescriptor
 
 var file_control_proto_rawDesc = []byte{
 	0x0a, 0x0d, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12,
-	0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x5a, 0x0a, 0x0c, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52,
+	0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x2d, 0x0a, 0x0c, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52,
 	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63,
 	0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x75, 0x62, 0x6c,
-	0x69, 0x63, 0x4b, 0x65, 0x79, 0x12, 0x2b, 0x0a, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e,
-	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
-	0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69,
-	0x6e, 0x74, 0x22, 0x4a, 0x0a, 0x0d, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52,
-	0x02, 0x69, 0x64, 0x12, 0x29, 0x0a, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50, 0x65, 0x65, 0x72,
-	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x22, 0x46,
-	0x0a, 0x0f, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
-	0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x6b, 0x65, 0x79, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79,
-	0x12, 0x14, 0x0a, 0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x05, 0x74, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0x2a, 0x0a, 0x10, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74,
-	0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x74,
-	0x61, 0x74, 0x75, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74,
-	0x75, 0x73, 0x22, 0x1f, 0x0a, 0x0d, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52,
-	0x02, 0x69, 0x64, 0x22, 0xae, 0x02, 0x0a, 0x06, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x0e,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69, 0x64, 0x12, 0x34,
-	0x0a, 0x0b, 0x70, 0x65, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50, 0x65, 0x65, 0x72,
-	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x48, 0x00, 0x52, 0x0a, 0x70, 0x65, 0x65, 0x72, 0x43, 0x6f,
-	0x6e, 0x66, 0x69, 0x67, 0x12, 0x37, 0x0a, 0x0c, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x5f, 0x70,
-	0x65, 0x65, 0x72, 0x73, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x73, 0x48, 0x00,
-	0x52, 0x0b, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x73, 0x12, 0x3a, 0x0a,
-	0x0d, 0x70, 0x75, 0x6e, 0x63, 0x68, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x18, 0x04,
-	0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50, 0x75, 0x6e,
-	0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x00, 0x52, 0x0c, 0x70, 0x75, 0x6e,
-	0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x5f, 0x0a, 0x04, 0x54, 0x79, 0x70,
-	0x65, 0x12, 0x08, 0x0a, 0x04, 0x4e, 0x4f, 0x4e, 0x45, 0x10, 0x00, 0x12, 0x09, 0x0a, 0x05, 0x50,
-	0x55, 0x4e, 0x43, 0x48, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x43, 0x4f, 0x4e, 0x46, 0x49, 0x47,
-	0x10, 0x02, 0x12, 0x10, 0x0a, 0x0c, 0x50, 0x45, 0x45, 0x52, 0x5f, 0x43, 0x4f, 0x4e, 0x4e, 0x45,
-	0x43, 0x54, 0x10, 0x03, 0x12, 0x13, 0x0a, 0x0f, 0x50, 0x45, 0x45, 0x52, 0x5f, 0x44, 0x49, 0x53,
-	0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x04, 0x12, 0x0f, 0x0a, 0x0b, 0x50, 0x45, 0x45,
-	0x52, 0x5f, 0x55, 0x50, 0x44, 0x41, 0x54, 0x45, 0x10, 0x05, 0x42, 0x08, 0x0a, 0x06, 0x75, 0x70,
-	0x64, 0x61, 0x74, 0x65, 0x22, 0x29, 0x0a, 0x0a, 0x50, 0x65, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x12, 0x1b, 0x0a, 0x09, 0x74, 0x75, 0x6e, 0x6e, 0x65, 0x6c, 0x5f, 0x69, 0x70, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x75, 0x6e, 0x6e, 0x65, 0x6c, 0x49, 0x70, 0x22,
-	0x59, 0x0a, 0x0b, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x73, 0x12, 0x14,
-	0x0a, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x05, 0x63,
-	0x6f, 0x75, 0x6e, 0x74, 0x12, 0x34, 0x0a, 0x0c, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x5f, 0x70,
-	0x65, 0x65, 0x72, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x52, 0x0b, 0x72,
-	0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x73, 0x22, 0x87, 0x01, 0x0a, 0x0a, 0x52,
-	0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x75, 0x62,
-	0x6c, 0x69, 0x63, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70,
-	0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x12, 0x1b, 0x0a, 0x09, 0x74, 0x75, 0x6e, 0x6e,
-	0x65, 0x6c, 0x5f, 0x69, 0x70, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x75, 0x6e,
-	0x6e, 0x65, 0x6c, 0x49, 0x70, 0x12, 0x2d, 0x0a, 0x09, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e,
-	0x74, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x09, 0x65, 0x6e, 0x64, 0x70, 0x6f,
-	0x69, 0x6e, 0x74, 0x73, 0x22, 0x26, 0x0a, 0x08, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74,
-	0x12, 0x1a, 0x0a, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x22, 0x22, 0x0a, 0x10,
-	0x44, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74,
+	0x69, 0x63, 0x4b, 0x65, 0x79, 0x22, 0x3a, 0x0a, 0x0d, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50,
+	0x65, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x52, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69,
+	0x67, 0x22, 0x39, 0x0a, 0x0a, 0x50, 0x65, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12,
+	0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69, 0x64, 0x12,
+	0x1b, 0x0a, 0x09, 0x74, 0x75, 0x6e, 0x6e, 0x65, 0x6c, 0x5f, 0x69, 0x70, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x08, 0x74, 0x75, 0x6e, 0x6e, 0x65, 0x6c, 0x49, 0x70, 0x22, 0x53, 0x0a, 0x0f,
+	0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x1d, 0x0a, 0x0a, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x12, 0x21,
+	0x0a, 0x0c, 0x72, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x72, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x4b, 0x65,
+	0x79, 0x22, 0x12, 0x0a, 0x10, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x36, 0x0a, 0x08, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e,
+	0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69,
+	0x64, 0x12, 0x1a, 0x0a, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x22, 0x0f, 0x0a,
+	0x0d, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x5a,
+	0x0a, 0x0e, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x4c, 0x69, 0x73, 0x74,
+	0x12, 0x14, 0x0a, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52,
+	0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x32, 0x0a, 0x0b, 0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65,
+	0x5f, 0x70, 0x65, 0x65, 0x72, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x52, 0x0a,
+	0x72, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x22, 0x74, 0x0a, 0x0a, 0x52, 0x65,
+	0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x70, 0x75, 0x62, 0x6c,
+	0x69, 0x63, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x70, 0x75,
+	0x62, 0x6c, 0x69, 0x63, 0x4b, 0x65, 0x79, 0x12, 0x1a, 0x0a, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f,
+	0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f,
+	0x69, 0x6e, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x74, 0x75, 0x6e, 0x6e, 0x65, 0x6c, 0x5f, 0x69, 0x70,
+	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x75, 0x6e, 0x6e, 0x65, 0x6c, 0x49, 0x70,
+	0x22, 0x1f, 0x0a, 0x0d, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69,
+	0x64, 0x22, 0xc7, 0x01, 0x0a, 0x0e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x41, 0x0a, 0x0b, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x5f, 0x74,
+	0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x20, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x54, 0x79, 0x70, 0x65, 0x52, 0x0a, 0x75, 0x70, 0x64,
+	0x61, 0x74, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x32, 0x0a, 0x09, 0x70, 0x65, 0x65, 0x72, 0x5f,
+	0x6c, 0x69, 0x73, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x52, 0x65, 0x6d, 0x6f, 0x74, 0x65, 0x50, 0x65, 0x65, 0x72, 0x4c, 0x69, 0x73,
+	0x74, 0x52, 0x08, 0x70, 0x65, 0x65, 0x72, 0x4c, 0x69, 0x73, 0x74, 0x22, 0x3e, 0x0a, 0x0a, 0x55,
+	0x70, 0x64, 0x61, 0x74, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x49, 0x4e, 0x49,
+	0x54, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x01,
+	0x12, 0x0e, 0x0a, 0x0a, 0x44, 0x49, 0x53, 0x43, 0x4f, 0x4e, 0x4e, 0x45, 0x43, 0x54, 0x10, 0x02,
+	0x12, 0x09, 0x0a, 0x05, 0x50, 0x55, 0x4e, 0x43, 0x48, 0x10, 0x03, 0x22, 0x23, 0x0a, 0x11, 0x45,
+	0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x44, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79,
 	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x02, 0x69, 0x64,
-	0x22, 0x3b, 0x0a, 0x0c, 0x50, 0x75, 0x6e, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x2b, 0x0a, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f,
-	0x69, 0x6e, 0x74, 0x52, 0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x22, 0x0c, 0x0a,
-	0x0a, 0x50, 0x75, 0x6e, 0x63, 0x68, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x32, 0xea, 0x01, 0x0a, 0x0c,
-	0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x50, 0x6c, 0x61, 0x6e, 0x65, 0x12, 0x34, 0x0a, 0x05,
-	0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x12, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4c, 0x6f,
-	0x67, 0x69, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x2e, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x3d, 0x0a, 0x08, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x12, 0x16,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52,
-	0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x00, 0x12, 0x32, 0x0a, 0x07, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x72, 0x12, 0x14, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x0d, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74,
-	0x65, 0x22, 0x00, 0x30, 0x01, 0x12, 0x31, 0x0a, 0x05, 0x50, 0x75, 0x6e, 0x63, 0x68, 0x12, 0x13,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50, 0x75, 0x6e, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x11, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x50, 0x75, 0x6e, 0x63,
-	0x68, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x23, 0x5a, 0x21, 0x67, 0x69, 0x74, 0x68,
-	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x61, 0x6c, 0x64, 0x6f, 0x67, 0x32, 0x30, 0x2f,
-	0x6f, 0x76, 0x65, 0x72, 0x6c, 0x61, 0x79, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x22, 0x37, 0x0a, 0x19, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x44, 0x69, 0x73, 0x63,
+	0x6f, 0x76, 0x65, 0x72, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x1a, 0x0a,
+	0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x32, 0x82, 0x02, 0x0a, 0x0c, 0x43, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x50, 0x6c, 0x61, 0x6e, 0x65, 0x12, 0x38, 0x0a, 0x09, 0x4c, 0x6f,
+	0x67, 0x69, 0x6e, 0x50, 0x65, 0x65, 0x72, 0x12, 0x13, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e,
+	0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x14, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x00, 0x12, 0x41, 0x0a, 0x0c, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72,
+	0x50, 0x65, 0x65, 0x72, 0x12, 0x16, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x67,
+	0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x17, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x3a, 0x0a, 0x0f, 0x53, 0x65, 0x74, 0x50, 0x65,
+	0x65, 0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x0f, 0x2e, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2e, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x1a, 0x14, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x22, 0x00, 0x12, 0x39, 0x0a, 0x06, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x12, 0x14, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x15, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x55, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x30, 0x01, 0x42, 0x16,
+	0x5a, 0x14, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x50, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74,
+	0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -897,43 +824,39 @@ func file_control_proto_rawDescGZIP() []byte {
 var file_control_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_control_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_control_proto_goTypes = []interface{}{
-	(Update_Type)(0),         // 0: proto.Update.Type
-	(*LoginRequest)(nil),     // 1: proto.LoginRequest
-	(*LoginResponse)(nil),    // 2: proto.LoginResponse
-	(*RegisterRequest)(nil),  // 3: proto.RegisterRequest
-	(*RegisterResponse)(nil), // 4: proto.RegisterResponse
-	(*UpdateRequest)(nil),    // 5: proto.UpdateRequest
-	(*Update)(nil),           // 6: proto.Update
-	(*PeerConfig)(nil),       // 7: proto.PeerConfig
-	(*RemotePeers)(nil),      // 8: proto.RemotePeers
-	(*RemotePeer)(nil),       // 9: proto.RemotePeer
-	(*Endpoint)(nil),         // 10: proto.Endpoint
-	(*DiscoverEndpoint)(nil), // 11: proto.DiscoverEndpoint
-	(*PunchRequest)(nil),     // 12: proto.PunchRequest
-	(*PunchReply)(nil),       // 13: proto.PunchReply
+	(UpdateResponse_UpdateType)(0),    // 0: proto.UpdateResponse.UpdateType
+	(*LoginRequest)(nil),              // 1: proto.LoginRequest
+	(*LoginResponse)(nil),             // 2: proto.LoginResponse
+	(*PeerConfig)(nil),                // 3: proto.PeerConfig
+	(*RegisterRequest)(nil),           // 4: proto.RegisterRequest
+	(*RegisterResponse)(nil),          // 5: proto.RegisterResponse
+	(*Endpoint)(nil),                  // 6: proto.Endpoint
+	(*EmptyResponse)(nil),             // 7: proto.EmptyResponse
+	(*RemotePeerList)(nil),            // 8: proto.RemotePeerList
+	(*RemotePeer)(nil),                // 9: proto.RemotePeer
+	(*UpdateRequest)(nil),             // 10: proto.UpdateRequest
+	(*UpdateResponse)(nil),            // 11: proto.UpdateResponse
+	(*EndpointDiscovery)(nil),         // 12: proto.EndpointDiscovery
+	(*EndpointDiscoveryResponse)(nil), // 13: proto.EndpointDiscoveryResponse
 }
 var file_control_proto_depIdxs = []int32{
-	10, // 0: proto.LoginRequest.endpoint:type_name -> proto.Endpoint
-	7,  // 1: proto.LoginResponse.config:type_name -> proto.PeerConfig
-	7,  // 2: proto.Update.peer_config:type_name -> proto.PeerConfig
-	8,  // 3: proto.Update.remote_peers:type_name -> proto.RemotePeers
-	12, // 4: proto.Update.punch_request:type_name -> proto.PunchRequest
-	9,  // 5: proto.RemotePeers.remote_peers:type_name -> proto.RemotePeer
-	10, // 6: proto.RemotePeer.endpoints:type_name -> proto.Endpoint
-	10, // 7: proto.PunchRequest.endpoint:type_name -> proto.Endpoint
-	1,  // 8: proto.ControlPlane.Login:input_type -> proto.LoginRequest
-	3,  // 9: proto.ControlPlane.Register:input_type -> proto.RegisterRequest
-	5,  // 10: proto.ControlPlane.Updater:input_type -> proto.UpdateRequest
-	12, // 11: proto.ControlPlane.Punch:input_type -> proto.PunchRequest
-	2,  // 12: proto.ControlPlane.Login:output_type -> proto.LoginResponse
-	4,  // 13: proto.ControlPlane.Register:output_type -> proto.RegisterResponse
-	6,  // 14: proto.ControlPlane.Updater:output_type -> proto.Update
-	13, // 15: proto.ControlPlane.Punch:output_type -> proto.PunchReply
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	3,  // 0: proto.LoginResponse.config:type_name -> proto.PeerConfig
+	9,  // 1: proto.RemotePeerList.remote_peer:type_name -> proto.RemotePeer
+	0,  // 2: proto.UpdateResponse.update_type:type_name -> proto.UpdateResponse.UpdateType
+	8,  // 3: proto.UpdateResponse.peer_list:type_name -> proto.RemotePeerList
+	1,  // 4: proto.ControlPlane.LoginPeer:input_type -> proto.LoginRequest
+	4,  // 5: proto.ControlPlane.RegisterPeer:input_type -> proto.RegisterRequest
+	6,  // 6: proto.ControlPlane.SetPeerEndpoint:input_type -> proto.Endpoint
+	10, // 7: proto.ControlPlane.Update:input_type -> proto.UpdateRequest
+	2,  // 8: proto.ControlPlane.LoginPeer:output_type -> proto.LoginResponse
+	5,  // 9: proto.ControlPlane.RegisterPeer:output_type -> proto.RegisterResponse
+	7,  // 10: proto.ControlPlane.SetPeerEndpoint:output_type -> proto.EmptyResponse
+	11, // 11: proto.ControlPlane.Update:output_type -> proto.UpdateResponse
+	8,  // [8:12] is the sub-list for method output_type
+	4,  // [4:8] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_control_proto_init() }
@@ -967,54 +890,6 @@ func file_control_proto_init() {
 			}
 		}
 		file_control_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_control_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterResponse); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_control_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateRequest); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_control_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Update); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_control_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*PeerConfig); i {
 			case 0:
 				return &v.state
@@ -1026,8 +901,56 @@ func file_control_proto_init() {
 				return nil
 			}
 		}
+		file_control_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RegisterRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_control_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RegisterResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_control_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Endpoint); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_control_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*EmptyResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 		file_control_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemotePeers); i {
+			switch v := v.(*RemotePeerList); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1051,7 +974,7 @@ func file_control_proto_init() {
 			}
 		}
 		file_control_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Endpoint); i {
+			switch v := v.(*UpdateRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1063,7 +986,7 @@ func file_control_proto_init() {
 			}
 		}
 		file_control_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DiscoverEndpoint); i {
+			switch v := v.(*UpdateResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1075,7 +998,7 @@ func file_control_proto_init() {
 			}
 		}
 		file_control_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PunchRequest); i {
+			switch v := v.(*EndpointDiscovery); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1087,7 +1010,7 @@ func file_control_proto_init() {
 			}
 		}
 		file_control_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PunchReply); i {
+			switch v := v.(*EndpointDiscoveryResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1098,11 +1021,6 @@ func file_control_proto_init() {
 				return nil
 			}
 		}
-	}
-	file_control_proto_msgTypes[5].OneofWrappers = []interface{}{
-		(*Update_PeerConfig)(nil),
-		(*Update_RemotePeers)(nil),
-		(*Update_PunchRequest)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

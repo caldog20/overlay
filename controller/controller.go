@@ -2,105 +2,167 @@ package controller
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
-	"log"
-	"net"
-	"net/http"
+	"net/netip"
 	"sync"
-	"sync/atomic"
 
 	"github.com/caldog20/overlay/proto"
-	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
-	Subnet = "100.65.0."
+	Prefix = "100.65.0.0/24"
 )
 
 type Controller struct {
-	store           *Store
-	grpcServer      *grpc.Server
-	config          *Config
-	autocertManager *autocert.Manager
-	autocertServer  *http.Server
-	discovery       *net.UDPConn
-	ipCount         atomic.Uint64
-
+	store        Store
+	grpcServer   *GRPCServer
+	prefix       netip.Prefix
 	peerChannels sync.Map
-	proto.UnimplementedControlPlaneServer
 }
 
-func NewController(config *Config) (*Controller, error) {
+func NewController(store Store) *Controller {
 	c := new(Controller)
+	c.InitIPAM(Prefix)
 
-	store, err := NewStore(config.DbPath)
-	if err != nil {
-		return nil, err
-	}
-
-	err = store.Migrate()
-	if err != nil {
-		return nil, err
-	}
-
-	autocertManager := &autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(config.AutoCert.Domain),
-		Cache:      autocert.DirCache(config.AutoCert.CacheDir),
-	}
-
-	var creds credentials.TransportCredentials
-	if config.AutoCert.Enabled {
-		creds = credentials.NewTLS(&tls.Config{GetCertificate: autocertManager.GetCertificate})
-	} else {
-		creds = insecure.NewCredentials()
-	}
-
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
-	proto.RegisterControlPlaneServer(grpcServer, c)
+	gserver := NewGRPCServer(c)
 
 	c.store = store
-	c.autocertManager = autocertManager
-	c.grpcServer = grpcServer
-	c.config = config
+	c.grpcServer = gserver
 	c.peerChannels = sync.Map{}
-
-	return c, nil
+	return c
 }
 
-func (c *Controller) RunController(ctx context.Context) {
+func (c *Controller) Run(ctx context.Context) error {
 	eg, egCtx := errgroup.WithContext(ctx)
-	if c.config.AutoCert.Enabled {
-		log.Println("starting autocert handler")
-		eg.Go(func() error { return c.AutocertHandler(c.autocertManager) })
-	}
 
-	log.Println("starting discovery server")
-	eg.Go(func() error { return c.StartDiscoveryServer() })
-
-	log.Printf("starting grpc server on port %d autocert:%t", c.config.GrpcPort, c.config.AutoCert.Enabled)
-	lis, err := net.Listen("tcp4", fmt.Sprintf(":%d", c.config.GrpcPort))
-	if err != nil {
-		log.Fatal("error starting tcp listener for grpc server")
-	}
-
-	eg.Go(func() error { return c.grpcServer.Serve(lis) })
+	eg.Go(func() error {
+		return c.grpcServer.Run()
+	})
 
 	eg.Go(func() error {
 		<-egCtx.Done()
-		log.Println("controller shutting down")
-		c.discovery.Close()
-		c.autocertServer.Shutdown(context.Background())
-		c.grpcServer.GracefulStop()
+		c.ClosePeerUpdateChannels()
+		c.grpcServer.server.GracefulStop()
 		return nil
 	})
 
 	if err := eg.Wait(); err != nil {
-		log.Printf("error: %s", err)
+		return err
 	}
+	return nil
+}
+
+// Provide main service functions agnostic of GRPC/Rest
+
+// LoginPeer logs in an existing peer by public key
+// If peer exists, returns peer configuration
+// If the peer is not registered or does not exist, returns nil peer and ErrNotFound
+func (c *Controller) LoginPeer(publicKey string) (*PeerConfig, error) {
+	peer, err := c.store.GetPeerByKey(publicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	config := peer.GetPeerConfig()
+
+	return config, nil
+}
+
+func (c *Controller) RegisterPeer(publicKey string) error {
+	ip, err := c.AllocateIP()
+	if err != nil {
+		return err
+	}
+	peer := &Peer{IP: ip, PublicKey: publicKey, Connected: false}
+
+	err = c.store.CreatePeer(peer)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) SetPeerEndpoint(id uint32, endpoint string) error {
+	if id == 0 {
+		return ErrInvalidPeerID
+	}
+	err := c.store.UpdatePeerEndpoint(id, endpoint)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) InitIPAM(prefix string) error {
+	p, err := netip.ParsePrefix(prefix)
+	if err != nil {
+		return err
+	}
+	c.prefix = p
+	return nil
+}
+
+func (c *Controller) AllocateIP() (string, error) {
+	var nextIP netip.Addr
+	ips, err := c.store.GetPeerIPs()
+	if err != nil {
+		return "", err
+	}
+	nextIP = c.prefix.Addr().Next()
+
+TOP:
+	for _, ip := range ips {
+		if ip == nextIP.String() {
+			nextIP = nextIP.Next()
+			goto TOP
+		}
+	}
+	return nextIP.String(), nil
+}
+
+func (c *Controller) GetPeerUpdateChan(id uint32) chan *proto.UpdateResponse {
+	pc := make(chan *proto.UpdateResponse, 10)
+	c.peerChannels.Store(id, pc)
+	return pc
+}
+
+func (c *Controller) DeletePeerUpdateChan(id uint32) {
+	pc, loaded := c.peerChannels.LoadAndDelete(id)
+	if !loaded {
+		return
+	}
+	peerChan := pc.(chan *proto.UpdateResponse)
+
+	close(peerChan)
+}
+
+func (c *Controller) ClosePeerUpdateChannels() {
+	c.peerChannels.Range(func(k, v interface{}) bool {
+		pc := v.(chan *proto.UpdateResponse)
+		close(pc)
+		return true
+	})
+}
+
+func (c *Controller) MarkPeerConnected(id uint32) error {
+	err := c.store.UpatePeerStatus(id, true)
+	if err != nil {
+		return err
+	}
+	c.EventPeerConnected(id)
+	return nil
+}
+
+func (c *Controller) MarkPeerDisconnected(id uint32) error {
+	c.DeletePeerUpdateChan(id)
+	c.EventPeerDisconnected(id)
+	return c.store.UpatePeerStatus(id, false)
+}
+
+func (c *Controller) GetConnectedPeers() ([]Peer, error) {
+	peers, err := c.store.GetConnectedPeers()
+	if err != nil {
+		return nil, err
+	}
+	return peers, nil
 }

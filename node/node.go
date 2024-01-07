@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/netip"
-	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -14,7 +13,9 @@ import (
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/caldog20/overlay/proto"
 )
@@ -104,10 +105,27 @@ func (node *Node) Run(ctx context.Context) {
 	// Register with controller
 	err := node.Login()
 	if err != nil {
+		s, _ := status.FromError(err)
+		if s.Code() == codes.NotFound {
+			err = node.Register()
+			if err != nil {
+				panic(err)
+			}
+			err = node.Login()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			panic(err)
+		}
+	}
+
+	ep, err := node.DiscoverEndpoint()
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	//node.UpdateNodes()
+	node.SetRemoteEndpoint(ep)
 
 	// Configure tunnel ip/routes
 	err = node.tun.ConfigureInterface(node.ip)
@@ -115,8 +133,8 @@ func (node *Node) Run(ctx context.Context) {
 		log.Fatal(err)
 	}
 
-	os.Exit(0)
-	//go node.CheckPunches()
+	node.StartUpdateStream(ctx)
+
 	go node.conn.ReadPackets(node.OnUDPPacket, 0)
 	go node.tun.ReadPackets(node.OnTunnelPacket)
 

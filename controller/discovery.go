@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -9,8 +10,8 @@ import (
 	pb "google.golang.org/protobuf/proto"
 )
 
-func (c *Controller) StartDiscoveryServer() error {
-	laddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", c.config.DiscoveryPort))
+func StartDiscoveryServer(ctx context.Context) error {
+	laddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", 5050))
 	if err != nil {
 		return err
 	}
@@ -20,15 +21,14 @@ func (c *Controller) StartDiscoveryServer() error {
 		return err
 	}
 
-	c.discovery = conn
-
-	return c.runDiscoveryServer()
-}
-
-func (c *Controller) runDiscoveryServer() error {
 	buf := make([]byte, 1500)
-	conn := c.discovery
+
 	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
 		n, raddr, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			return nil
@@ -61,8 +61,8 @@ func (c *Controller) runDiscoveryServer() error {
 	}
 }
 
-func parseDiscoveryMessage(b []byte) (*proto.DiscoverEndpoint, error) {
-	msg := &proto.DiscoverEndpoint{}
+func parseDiscoveryMessage(b []byte) (*proto.EndpointDiscovery, error) {
+	msg := &proto.EndpointDiscovery{}
 	err := pb.Unmarshal(b, msg)
 	if err != nil {
 		return nil, err
@@ -71,6 +71,6 @@ func parseDiscoveryMessage(b []byte) (*proto.DiscoverEndpoint, error) {
 }
 
 func encodeDiscoveryResponse(endpoint string) ([]byte, error) {
-	msg := &proto.Endpoint{Endpoint: endpoint}
+	msg := &proto.EndpointDiscoveryResponse{Endpoint: endpoint}
 	return pb.Marshal(msg)
 }
