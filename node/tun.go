@@ -17,6 +17,7 @@ type TunMetrics struct {
 }
 
 // TODO don't anonymously embed this
+// TODO Break out into interface to support Wintun and unix/linux tun
 type Tun struct {
 	*water.Interface
 }
