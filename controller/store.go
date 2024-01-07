@@ -2,8 +2,6 @@ package controller
 
 import (
 	"sync"
-
-	"gorm.io/gorm"
 )
 
 type Store interface {
@@ -18,20 +16,9 @@ type Store interface {
 	UpatePeerStatus(id uint32, connected bool) error
 }
 
-type IPAllocation struct {
-	gorm.Model
-	IP        string
-	Allocated bool
-}
-
 type MapStore struct {
 	// primary key is uint32 ID
 	m sync.Map
-}
-
-func (s *MapStore) GetPeerIPs() ([]string, error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func NewMapStore() Store {
@@ -88,6 +75,17 @@ func (s *MapStore) GetPeerByKey(key string) (*Peer, error) {
 	return peer, nil
 }
 
+func (s *MapStore) GetPeerIPs() ([]string, error) {
+	var ips []string
+	s.m.Range(func(k, v interface{}) bool {
+		p := v.(*Peer)
+		ips = append(ips, p.IP)
+		return true
+	})
+
+	return ips, nil
+}
+
 func (s *MapStore) CreatePeer(peer *Peer) error {
 	_, existing := s.m.LoadOrStore(peer.ID, peer)
 	if existing {
@@ -106,16 +104,33 @@ func (s *MapStore) UpdatePeer(peer *Peer) error {
 }
 
 func (s *MapStore) GetConnectedPeers() ([]Peer, error) {
-	//TODO implement me
-	panic("implement me")
+	var peers []Peer
+	s.m.Range(func(k, v interface{}) bool {
+		p := v.(*Peer)
+		peers = append(peers, p.Copy())
+		return true
+	})
+	return peers, nil
 }
 
 func (s *MapStore) UpdatePeerEndpoint(id uint32, endpoint string) error {
-	//TODO implement me
-	panic("implement me")
+	p, ok := s.m.Load(id)
+	if !ok {
+		return ErrNotFound
+	}
+	peer := p.(*Peer)
+	peer.Endpoint = endpoint
+	s.m.Store(id, peer)
+	return nil
 }
 
 func (s *MapStore) UpatePeerStatus(id uint32, connected bool) error {
-	//TODO implement me
-	panic("implement me")
+	p, ok := s.m.Load(id)
+	if !ok {
+		return ErrNotFound
+	}
+	peer := p.(*Peer)
+	peer.Connected = connected
+	s.m.Store(id, peer)
+	return nil
 }

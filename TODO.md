@@ -74,3 +74,8 @@ Wait until first successful encrypted packet is received to ensure handshake is 
   - Database/Store
     - Mock database for now using maps/etc
     - convert to sqlite
+
+- Discovery service/updating endpoints
+  - Ability to detect same local network or use public endpoint
+- Write GRPC client for node and separate
+- Properly handle peer updates, punches, etc

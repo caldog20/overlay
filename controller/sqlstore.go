@@ -14,9 +14,9 @@ type SqlStore struct {
 	db *gorm.DB
 }
 
-func NewStore(path string) (Store, error) {
+func NewSqlStore(path string) (Store, error) {
 	db, err := gorm.Open(sqlite.Open(fmt.Sprintf("file:%s?cache=shared&_journal_mode=WAL", path)), &gorm.Config{
-		PrepareStmt: true, Logger: logger.Default.LogMode(logger.Info),
+		PrepareStmt: true, Logger: logger.Default.LogMode(logger.Error),
 	})
 	if err != nil {
 		return nil, err

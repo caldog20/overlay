@@ -153,11 +153,13 @@ func (node *Node) handlePeerConnectUpdate(update *proto.UpdateResponse) {
 		return
 	}
 
+	rp := update.PeerList.RemotePeer[0]
+
 	node.maps.l.RLock()
-	p, found := node.maps.id[update.PeerList.RemotePeer[0].Id]
+	p, found := node.maps.id[rp.Id]
 	node.maps.l.RUnlock()
 	if !found {
-		peer, err := node.AddPeer(update.PeerList.RemotePeer[0])
+		peer, err := node.AddPeer(rp)
 		if err != nil {
 			return
 		}
@@ -169,7 +171,7 @@ func (node *Node) handlePeerConnectUpdate(update *proto.UpdateResponse) {
 	}
 
 	// Peer already found, update
-	err := p.Update(update.PeerList.RemotePeer[0])
+	err := p.Update(rp)
 	if err != nil {
 		panic(err)
 	}

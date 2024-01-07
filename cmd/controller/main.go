@@ -16,7 +16,7 @@ func main() {
 	//	log.Fatal(err)
 	//}
 
-	store, err := controller.NewStore("data.db")
+	store, err := controller.NewSqlStore("data.db")
 	if err != nil {
 		log.Fatal(err)
 	}

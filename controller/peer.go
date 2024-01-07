@@ -37,3 +37,13 @@ func (p *Peer) MarshalRemotePeerConfig() *proto.RemotePeer {
 func (p *PeerConfig) MarshalPeerConfig() *proto.PeerConfig {
 	return &proto.PeerConfig{Id: p.ID, TunnelIp: p.IP}
 }
+
+func (p *Peer) Copy() Peer {
+	return Peer{
+		ID:        p.ID,
+		PublicKey: p.PublicKey,
+		IP:        p.IP,
+		Endpoint:  p.Endpoint,
+		Connected: p.Connected,
+	}
+}
