@@ -119,7 +119,7 @@ func (s *GRPCServer) Update(req *proto.UpdateRequest, stream proto.ControlPlane_
 		return err
 	}
 
-	err = s.controller.MarkPeerConnected(req.Id)
+	err = s.controller.PeerConnected(req.Id)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (s *GRPCServer) Update(req *proto.UpdateRequest, stream proto.ControlPlane_
 		select {
 		case <-stream.Context().Done():
 			// Client disconnected, mark disconnected and send disconnect event to other peers
-			err := s.controller.MarkPeerDisconnected(req.Id)
+			err := s.controller.PeerDisconnected(req.Id)
 			return err
 		case update, ok := <-peerChan:
 			if !ok {

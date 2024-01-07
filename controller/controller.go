@@ -144,7 +144,7 @@ func (c *Controller) ClosePeerUpdateChannels() {
 	})
 }
 
-func (c *Controller) MarkPeerConnected(id uint32) error {
+func (c *Controller) PeerConnected(id uint32) error {
 	err := c.store.UpatePeerStatus(id, true)
 	if err != nil {
 		return err
@@ -153,7 +153,7 @@ func (c *Controller) MarkPeerConnected(id uint32) error {
 	return nil
 }
 
-func (c *Controller) MarkPeerDisconnected(id uint32) error {
+func (c *Controller) PeerDisconnected(id uint32) error {
 	c.DeletePeerUpdateChan(id)
 	c.EventPeerDisconnected(id)
 	return c.store.UpatePeerStatus(id, false)
