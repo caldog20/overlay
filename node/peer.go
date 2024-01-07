@@ -23,6 +23,7 @@ const (
 	CountHandshakeRetries = 10
 )
 
+// TODO proper self-contained state machine for noise handshakes
 type Peer struct {
 	mu          sync.RWMutex
 	pendingLock sync.RWMutex
@@ -33,11 +34,11 @@ type Peer struct {
 	IP   netip.Addr
 	ID   uint32
 
-	noise struct {
+	noise struct { // Needs it's own lock
 		hs        *noise.HandshakeState
 		rx        *noise.CipherState
 		tx        *noise.CipherState
-		state     atomic.Uint64 // probably doesn't need to be atomic, noise struct needs it's own lock
+		state     atomic.Uint64
 		initiator bool
 		pubkey    []byte
 		txNonce   atomic.Uint64
@@ -74,6 +75,7 @@ func NewPeer() *Peer {
 	peer.outbound = make(chan *OutboundBuffer, 64) // allow up to 64 packets to be cached/pending handshake???
 	peer.handshakes = make(chan *InboundBuffer, 3) // Handshake packet buffering???
 
+	// TODO split out into separate type with methods/callbacks
 	peer.timers.handshakeSent = time.AfterFunc(TimerHandshakeTimeout, peer.HandshakeTimeout)
 	peer.timers.handshakeSent.Stop()
 
@@ -168,34 +170,6 @@ func (peer *Peer) Stop() {
 	log.Printf("peer %d goroutines have stopped", peer.ID)
 	peer.running.Store(false)
 }
-
-//func (peer *Peer) Run(initiator bool) {
-//	if peer.running.Load() {
-//		return
-//	}
-//
-//	peer.mu.Lock() // Lock the peer state
-//	// peer.ctx, peer.cancel = context.WithCancel(context.Background())
-//
-//	peer.running.Store(true)
-//	peer.wg.Add(3)
-//
-//	peer.mu.Unlock() // Unlock and launch routines
-//
-//	// go peer.Handshake(initiator)
-//	go peer.Inbound()
-//	go peer.Outbound()
-//
-//	// Wait here for goroutines to finish
-//	peer.wg.Wait()
-//
-//	peer.mu.Lock()
-//	defer peer.mu.Unlock()
-//
-//	// Cleanup peer state and return to idle peer
-//	peer.ResetState()
-//	log.Println("Shutting peer down")
-//}
 
 func (peer *Peer) InboundPacket(buffer *InboundBuffer) {
 	if !peer.running.Load() {
@@ -311,21 +285,6 @@ LOOP:
 		}
 	}
 }
-
-//func (peer *Peer) flushPendingQueue() {
-//LOOP:
-//	for {
-//		select {
-//		case b, ok := <-peer.pending:
-//			if !ok {
-//				break LOOP
-//			}
-//			PutOutboundBuffer(b)
-//		default:
-//			break LOOP
-//		}
-//	}
-//}
 
 func (peer *Peer) flushQueues() {
 	peer.flushHandshakeQueue()

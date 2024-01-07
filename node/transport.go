@@ -90,6 +90,7 @@ func (peer *Peer) UpdateEndpoint(addr *net.UDPAddr) {
 	if !paddr.IP.Equal(addr.IP) || paddr.Port != addr.Port {
 		peer.mu.Lock()
 		log.Printf("Updating peer remote address")
+		// copy values here?
 		*peer.raddr = *addr
 		peer.mu.Unlock()
 	}
@@ -143,6 +144,7 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 	peer.timers.handshakeSent.Reset(time.Second * 3)
 }
 
+// TODO completely rewrite this with proper state tracking and error handling
 func (peer *Peer) Handshake() {
 	// log.Print("starting handshake routine")
 	// TODO handshake completion function
