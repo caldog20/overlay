@@ -1,6 +1,9 @@
--- protocol definition and dissector for goverlay message headers
+-- protocol definition and dissector for overlay message headers
 --
-local goverlay_proto = Proto("goverlay","Goverlay Protocol")
+
+overlay_udp_port = 5555
+
+local overlay_proto = Proto("overlay","Overlay Protocol")
 
 local types = {
     [0] = "None",
@@ -9,7 +12,7 @@ local types = {
     [3] = "Reset",
     [4] = "Rekey",
     [5] = "Close",
-    [255] = "Punch",
+    [0xff] = "Punch",
 }
 
 --local subtypes = {
@@ -20,17 +23,17 @@ local types = {
 --    [4] = "Keepalive"
 --}
 -- protocol fields
-local pf_version = ProtoField.new("Version", "goverlay.version", ftypes.UINT8)
-local pf_type = ProtoField.new("Message Type", "goverlay.type", ftypes.UINT8, types)
-local pf_index = ProtoField.new("SenderIndex", "goverlay.index", ftypes.UINT32)
-local pf_counter = ProtoField.new("Message Counter", "goverlay.counter", ftypes.UINT64)
-local pf_reserved = ProtoField.new("Reserved", "goverlay.reserved", ftypes.UINT16, nil, base.HEX)
+local pf_version = ProtoField.new("Version", "overlay.version", ftypes.UINT8)
+local pf_type = ProtoField.new("Message Type", "overlay.type", ftypes.UINT8, types)
+local pf_index = ProtoField.new("SenderIndex", "overlay.index", ftypes.UINT32)
+local pf_counter = ProtoField.new("Message Counter", "overlay.counter", ftypes.UINT64)
+local pf_reserved = ProtoField.new("Reserved", "overlay.reserved", ftypes.UINT16, nil, base.HEX)
 
 -- register protofields
-goverlay_proto.fields = {pf_version, pf_type, pf_index, pf_counter, pf_reserved}
+overlay_proto.fields = { pf_version, pf_type, pf_index, pf_counter, pf_reserved}
 
 -- field to pull type info for checking payload
-local t = Field.new("goverlay.type")
+local t = Field.new("overlay.type")
 
 local function getTypeValue(typename)
     for k,v in pairs(types) do
@@ -51,11 +54,11 @@ local function isData()
     return false
 end
 -- dissector function
-function goverlay_proto.dissector(buffer,pinfo,tree)
-    pinfo.cols.protocol:set("GOVERLAY")
+function overlay_proto.dissector(buffer, pinfo, tree)
+    pinfo.cols.protocol:set("overlay")
     local pktlen = buffer:reported_length_remaining()
 
-    local root = tree:add(goverlay_proto, buffer:range(0, pktlen))
+    local root = tree:add(overlay_proto, buffer:range(0, pktlen))
 
     root:add(pf_version, buffer:range(0, 1))
     root:add(pf_type, buffer:range(1, 1))
@@ -69,12 +72,12 @@ function goverlay_proto.dissector(buffer,pinfo,tree)
     --if isData() then
     --    local ip_dissector = Dissector.get("ip")
     --    ip_dissector:call(buffer(4):tvb(), pinfo, payload_tree)
-    --    pinfo.cols.protocol:set("GOVERLAY")
+    --    pinfo.cols.protocol:set("overlay")
     --else
     --    payload_tree:add("Control Message Payload: " .. payload_range)
     --end
 
-    -- local subtree = :add(goverlay_proto,buffer(),"Goverlay Protocol Data")
+    -- local subtree = :add(overlay_proto,buffer(),"overlay Protocol Data")
     -- subtree:add(buffer(0,1), "Version: " .. buffer(0,1))
     -- subtree:add(buffer(1,1), "Type: " .. buffer(1,1))
     -- subtree:add(buffer(2,1), "SubType: " .. buffer(2,1))
@@ -84,5 +87,5 @@ end
 
 -- load the udp.port table
 udp_table = DissectorTable.get("udp.port")
--- register port for goverlay protocol
-udp_table:add(5555,goverlay_proto)
+-- register port for overlay protocol
+udp_table:add(overlay_udp_port, overlay_proto)

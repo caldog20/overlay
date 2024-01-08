@@ -15,16 +15,16 @@ type InboundBuffer struct {
 	packet []byte       // Allocated for decrypted data
 	raddr  *net.UDPAddr // Remote Address of packet
 	size   int          // size of data read from UDP socket
-	header *Header
-	peer   *Peer // Peer this index belongs to
+	header *Header      // preallocated header
+	peer   *Peer        // Peer this index belongs to
 }
 
 type OutboundBuffer struct {
-	out    []byte // Final data to send over socket
-	packet []byte // For tunnel inbound data
-	size   int
-	header *Header
-	peer   *Peer
+	out    []byte  // Final data to send over socket
+	packet []byte  // For tunnel inbound data
+	size   int     // size of data read from tunnel interface
+	header *Header // preallocated header
+	peer   *Peer   // Peer this index belongs to
 }
 
 var (

@@ -13,7 +13,7 @@ type Config struct {
 	AutoCert      struct {
 		Enabled  bool   `env:"AUTOCERT_ENABLED,default=false"`
 		Domain   string `env:"AUTOCERT_DOMAIN"`
-		CacheDir string `enc:"AUTOCERT_CACHE_DIR"`
+		CacheDir string `enc:"AUTOCERT_CACHEDIR"`
 	}
 }
 

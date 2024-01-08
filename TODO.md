@@ -78,8 +78,15 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 - Discovery service/updating endpoints
   - Ability to detect same local network or use public endpoint
   - Use STUN but server from controller instead of separately for a single solution
+  - Maybe custom negotiation protocol/method
+  - Peers can exchange endpoints via grpc through controller
+  - send test messages over udp socket?
+  - figure out selecting local network over public endpoint if on same LAN
 - Write GRPC client for node and separate
 - Properly handle peer updates, punches, etc
 - Try to login, if not registered, prompt sign in to register node public key
 - Then login and continue startup
 - fix stream update handler on node, retry if connection breaks
+- HotPath-
+  - flynn/noise allocates during decrypt for 12byte nonce
+  - wrap encrypt/decrypt and provide temp buffer for nonce to be reused

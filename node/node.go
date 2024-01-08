@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
@@ -90,9 +91,12 @@ func NewNode(port uint16, controller string) (*Node, error) {
 		return nil, err
 	}
 
-	gconn, err := grpc.Dial(controller, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// TODO Fix this/move when fixing login/register flow
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+	gconn, err := grpc.DialContext(ctx, controller, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error connecting to controller grpc: ", err)
 	}
 
 	node.controller = proto.NewControlPlaneClient(gconn)
@@ -174,7 +178,7 @@ func (node *Node) OnUDPPacket(buffer *InboundBuffer, index int) {
 
 	// TODO temporary sanity check if peer is somehow nil
 	if peer == nil {
-		log.Fatal("Peer is nil!!!")
+		log.Fatal("Peer is nil")
 	}
 
 	buffer.peer = peer

@@ -13,7 +13,7 @@ COMMIT    := $(shell git describe --no-match --always --dirty)
 BRANCH    := $(shell git rev-parse --abbrev-ref HEAD)
 BUILDTIME := $(shell date '+%Y-%m-%d %T %z')
 
-REPO := github.com/caldog20/go-overlay
+REPO := github.com/caldog20/overlay
 
 LDFLAGS := -ldflags '-w -s'
 
@@ -55,7 +55,6 @@ peer-test2:
 
 protogen:
 	echo "Generating protobuf and grpc code"
-	#@protoc --proto_path=msg --go_out=msg --go_opt=paths=source_relative --go-grpc_out=msg --go-grpc_opt=paths=source_relative msg/*.proto
 	@protoc --proto_path=proto --go_out=proto --go_opt=paths=source_relative --go-grpc_out=proto  --go-grpc_opt=paths=source_relative proto/control.proto
 
 fmt:

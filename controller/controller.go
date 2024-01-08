@@ -102,6 +102,7 @@ func (c *Controller) InitIPAM(prefix string) error {
 	return nil
 }
 
+// TODO Write real IPAM
 func (c *Controller) AllocateIP() (string, error) {
 	var nextIP netip.Addr
 	ips, err := c.store.GetPeerIPs()

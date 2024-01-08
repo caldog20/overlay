@@ -41,6 +41,7 @@ func (peer *Peer) Inbound() {
 
 		if len(buffer.packet) > 0 {
 			// TODO: Check source IP here and ensure it matches peer's Ip
+			// Firewall implementation
 			peer.node.tun.Write(buffer.packet)
 		}
 
@@ -255,6 +256,7 @@ func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 	peer.mu.Lock()
 	defer peer.mu.Unlock()
+	defer PutInboundBuffer(buffer)
 
 	var err error
 	if peer.noise.initiator {
@@ -281,6 +283,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 		peer.UpdateEndpointLocked(buffer.raddr)
 
 		outbuf := GetOutboundBuffer()
+		defer PutOutboundBuffer(outbuf)
 		final, _ := outbuf.header.Encode(outbuf.out, Handshake, peer.node.id, 1)
 		final, peer.noise.rx, peer.noise.tx, err = peer.noise.hs.WriteMessage(final, nil)
 		if err != nil {
@@ -288,10 +291,8 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 		}
 
 		peer.node.conn.WriteToUDP(final, peer.raddr)
-		PutOutboundBuffer(outbuf)
 	}
 
-	PutInboundBuffer(buffer)
 	return nil
 }
 
