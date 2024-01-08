@@ -88,5 +88,5 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 - Then login and continue startup
 - fix stream update handler on node, retry if connection breaks
 - HotPath-
-  - flynn/noise allocates during decrypt for 12byte nonce
+  - flynn/noise allocates during encrypt/decrypt for 12byte nonce
   - wrap encrypt/decrypt and provide temp buffer for nonce to be reused
