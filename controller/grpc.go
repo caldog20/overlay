@@ -186,6 +186,25 @@ func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*proto.Remot
 	return rp, nil
 }
 
+func (s *GRPCServer) Punch(ctx context.Context, req *proto.PunchRequest) (*proto.EmptyResponse, error) {
+	err := validateID(req.ReqPeerId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrInvalidPeerID.Error())
+	}
+
+	err = validateID(req.DstPeerId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrInvalidPeerID.Error())
+	}
+
+	err = s.controller.EventPunchRequest(req.DstPeerId, req.Endpoint)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "error processing punch request")
+	}
+
+	return &proto.EmptyResponse{}, nil
+}
+
 func validatePublicKey(key string) error {
 	if key == "" {
 		return ErrInvalidPublicKey

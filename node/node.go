@@ -27,6 +27,9 @@ type Node struct {
 	id   uint32
 	ip   netip.Addr
 
+	prefOutboundIP     netip.Addr
+	discoveredEndpoint netip.AddrPort
+
 	maps struct {
 		l  sync.RWMutex
 		id map[uint32]*Peer     // for RX
@@ -72,9 +75,7 @@ func NewNode(port uint16, controller string) (*Node, error) {
 		return nil, err
 	}
 
-	selectedPort := node.conn.uc.LocalAddr().String()
-
-	_, p, err := net.SplitHostPort(selectedPort)
+	_, p, err := net.SplitHostPort(node.conn.uc.LocalAddr().String())
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +125,8 @@ func (node *Node) Run(ctx context.Context) {
 		}
 	}
 
-	ep, err := node.DiscoverEndpoint()
+	// Initially set endpoints
+	ep, err := node.DiscoverPublicEndpoint()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -224,8 +226,8 @@ func (node *Node) OnTunnelPacket(buffer *OutboundBuffer) {
 	}
 
 	dst, _ := netip.AddrFromSlice(ipHeader.Dst.To4())
-	net, _ := node.ip.Prefix(24)
-	if !net.Contains(dst) {
+	pfx, _ := node.ip.Prefix(24)
+	if !pfx.Contains(dst) {
 		// destination is not in network, drop
 		PutOutboundBuffer(buffer)
 		return

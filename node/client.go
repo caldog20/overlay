@@ -30,8 +30,10 @@ func (node *Node) Login() error {
 	return nil
 }
 
-func (node *Node) DiscoverEndpoint() (string, error) {
+// TODO change this to eventually be a proper STUN request
+func (node *Node) DiscoverPublicEndpoint() (string, error) {
 	buf := make([]byte, 1500)
+
 	dis := &proto.EndpointDiscovery{Id: node.id}
 	out, err := pb.Marshal(dis)
 	if err != nil {
@@ -54,6 +56,9 @@ func (node *Node) DiscoverEndpoint() (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// TODO fix this
+	node.discoveredEndpoint = netip.MustParseAddrPort(reply.Endpoint)
 
 	return reply.Endpoint, nil
 }
@@ -124,11 +129,31 @@ func (node *Node) HandleUpdate(update *proto.UpdateResponse) {
 	case proto.UpdateResponse_DISCONNECT:
 		//node.handlePeerDisconnectUpdate(update)
 	case proto.UpdateResponse_PUNCH:
-		//node.handlePeerPunchRequest(update)
+		node.handlePeerPunchRequest(update)
 	default:
 		log.Println("unmatched update message type")
 		return
 	}
+}
+
+func (node *Node) handlePeerPunchRequest(update *proto.UpdateResponse) {
+	endpoint := update.PeerList.RemotePeer[0].Endpoint
+	ua, err := net.ResolveUDPAddr(UDPType, endpoint)
+	if err != nil {
+		log.Printf("error parsing udp punch address: %s", err)
+		return
+	}
+	punch := make([]byte, 16)
+
+	h := NewHeader()
+
+	punch, err = h.Encode(punch, Punch, node.id, 0)
+	if err != nil {
+		log.Println("error encoding header for punch message")
+	}
+
+	node.conn.WriteToUDP(punch, ua)
+	log.Printf("sent punch message to udp address: %s", ua.String())
 }
 
 func (node *Node) handleInitialSync(update *proto.UpdateResponse) {
@@ -245,19 +270,19 @@ func (peer *Peer) Update(info *proto.RemotePeer) error {
 	return nil
 }
 
-//
-//func (node *Node) RequestPunch(id uint32) {
-//	// TODO Fix response for requesting punches
-//	_, err := node.controller.PunchRequester(context.Background(), &proto.PunchRequest{
-//		ReqId:    node.id,
-//		RemoteId: id,
-//	})
-//	if err != nil {
-//		log.Println(err)
-//		return
-//	}
-//}
-//
+func (node *Node) RequestPunch(id uint32) {
+	// TODO Fix response for requesting punches
+	_, err := node.controller.Punch(context.Background(), &proto.PunchRequest{
+		ReqPeerId: node.id,
+		DstPeerId: id,
+		Endpoint:  node.discoveredEndpoint.String(),
+	})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
 //func (node *Node) CheckPunches() {
 //	buf := make([]byte, 20)
 //	h := NewHeader()

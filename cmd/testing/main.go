@@ -19,7 +19,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("Preferred Outbound: ", GetOutboundIP().String())
+	//fmt.Println("Preferred Outbound: ", GetOutboundIP().String())
 }
 
 // Get preferred outbound ip of this machine

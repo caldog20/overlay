@@ -26,6 +26,7 @@ type ControlPlaneClient interface {
 	RegisterPeer(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	SetPeerEndpoint(ctx context.Context, in *Endpoint, opts ...grpc.CallOption) (*EmptyResponse, error)
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (ControlPlane_UpdateClient, error)
+	Punch(ctx context.Context, in *PunchRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
 }
 
 type controlPlaneClient struct {
@@ -95,6 +96,15 @@ func (x *controlPlaneUpdateClient) Recv() (*UpdateResponse, error) {
 	return m, nil
 }
 
+func (c *controlPlaneClient) Punch(ctx context.Context, in *PunchRequest, opts ...grpc.CallOption) (*EmptyResponse, error) {
+	out := new(EmptyResponse)
+	err := c.cc.Invoke(ctx, "/proto.ControlPlane/Punch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControlPlaneServer is the server API for ControlPlane service.
 // All implementations must embed UnimplementedControlPlaneServer
 // for forward compatibility
@@ -103,6 +113,7 @@ type ControlPlaneServer interface {
 	RegisterPeer(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	SetPeerEndpoint(context.Context, *Endpoint) (*EmptyResponse, error)
 	Update(*UpdateRequest, ControlPlane_UpdateServer) error
+	Punch(context.Context, *PunchRequest) (*EmptyResponse, error)
 	mustEmbedUnimplementedControlPlaneServer()
 }
 
@@ -121,6 +132,9 @@ func (UnimplementedControlPlaneServer) SetPeerEndpoint(context.Context, *Endpoin
 }
 func (UnimplementedControlPlaneServer) Update(*UpdateRequest, ControlPlane_UpdateServer) error {
 	return status.Errorf(codes.Unimplemented, "method Update not implemented")
+}
+func (UnimplementedControlPlaneServer) Punch(context.Context, *PunchRequest) (*EmptyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Punch not implemented")
 }
 func (UnimplementedControlPlaneServer) mustEmbedUnimplementedControlPlaneServer() {}
 
@@ -210,6 +224,24 @@ func (x *controlPlaneUpdateServer) Send(m *UpdateResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _ControlPlane_Punch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PunchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlPlaneServer).Punch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.ControlPlane/Punch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlPlaneServer).Punch(ctx, req.(*PunchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControlPlane_ServiceDesc is the grpc.ServiceDesc for ControlPlane service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +260,10 @@ var ControlPlane_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPeerEndpoint",
 			Handler:    _ControlPlane_SetPeerEndpoint_Handler,
+		},
+		{
+			MethodName: "Punch",
+			Handler:    _ControlPlane_Punch_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

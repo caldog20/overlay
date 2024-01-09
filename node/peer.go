@@ -224,6 +224,7 @@ func (peer *Peer) ResetState() {
 	peer.running.Store(true)
 }
 
+// TODO Not safe for concurrent use, possibly called from different goroutines. fix with lock inside noise struct
 func (peer *Peer) InitHandshake(initiator bool) error {
 	// Lock here incase something is changing with the nodes keys
 	peer.node.noise.l.RLock()

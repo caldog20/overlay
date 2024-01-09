@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"errors"
+
 	"github.com/caldog20/overlay/proto"
 )
 
@@ -61,7 +63,32 @@ func (c *Controller) EventPeerDisconnected(peerID uint32) {
 		}
 		return true
 	})
+}
 
+func (c *Controller) EventPunchRequest(peerID uint32, endpoint string) error {
+	// TODO actually validate endpoint
+	if endpoint == "" {
+		return ErrInvalidEndpoint
+	}
+
+	update := &proto.UpdateResponse{
+		UpdateType: proto.UpdateResponse_PUNCH,
+		PeerList: &proto.RemotePeerList{
+			Count: 1,
+			RemotePeer: []*proto.RemotePeer{{
+				Endpoint: endpoint,
+			}},
+		},
+	}
+
+	ch, ok := c.peerChannels.Load(peerID)
+	if !ok {
+		return errors.New("peer update channel not found")
+	}
+
+	ch.(chan *proto.UpdateResponse) <- update
+
+	return nil
 }
 
 func (c *Controller) newEvent(eventType int, peerID uint32) Event {

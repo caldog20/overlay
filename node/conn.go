@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -87,4 +88,20 @@ func (conn *Conn) GetLocalAddr() net.Addr {
 func (conn *Conn) Close() error {
 	err := conn.uc.Close()
 	return err
+}
+
+func GetPreferredOutboundAddr() (netip.Addr, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return netip.Addr{}, err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	parsedAddr, err := netip.ParseAddr(localAddr.IP.String())
+	if err != nil {
+		return netip.Addr{}, err
+	}
+
+	return parsedAddr, nil
 }

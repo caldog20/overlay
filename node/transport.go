@@ -110,7 +110,7 @@ func (peer *Peer) UpdateEndpointLocked(addr *net.UDPAddr) {
 func (peer *Peer) RequestPunch() {
 	peer.mu.RLock()
 	defer peer.mu.RUnlock()
-	//peer.node.RequestPunch(peer.ID)
+	peer.node.RequestPunch(peer.ID)
 }
 
 func (peer *Peer) TrySendHandshake(retry bool) {
@@ -127,7 +127,7 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 			return
 		}
 		// TODO Remove this in favor of polling updates from controller
-		if attempts > 2 {
+		if attempts > 1 {
 			peer.RequestPunch()
 		}
 		log.Printf("retrying handshake attempt %d", peer.counters.handshakeRetries.Load())
