@@ -126,10 +126,7 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 			peer.ResetState()
 			return
 		}
-		// TODO Remove this in favor of polling updates from controller
-		if attempts > 1 {
-			peer.RequestPunch()
-		}
+		peer.RequestPunch()
 		log.Printf("retrying handshake attempt %d", peer.counters.handshakeRetries.Load())
 	}
 

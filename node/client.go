@@ -107,15 +107,17 @@ func (node *Node) StartUpdateStream(ctx context.Context) {
 	node.HandleUpdate(response)
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			response, err = stream.Recv()
-			if err != nil {
+		for {
+			select {
+			case <-ctx.Done():
 				return
+			default:
+				response, err = stream.Recv()
+				if err != nil {
+					return
+				}
+				node.HandleUpdate(response)
 			}
-			node.HandleUpdate(response)
 		}
 	}()
 }

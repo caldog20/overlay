@@ -68,7 +68,7 @@ func encodeToSlice(b []byte, h *Header) []byte {
 	b[1] = h.Type
 	binary.BigEndian.PutUint32(b[2:6], h.SenderIndex)
 	binary.BigEndian.PutUint64(b[6:14], h.Counter)
-	binary.BigEndian.PutUint16(b[14:18], h.Padding)
+	binary.BigEndian.PutUint16(b[14:16], h.Padding)
 
 	return b
 }
@@ -86,7 +86,7 @@ func (h *Header) Parse(b []byte) error {
 	h.Type = b[1]
 	h.SenderIndex = binary.BigEndian.Uint32(b[2:6])
 	h.Counter = binary.BigEndian.Uint64(b[6:14])
-	h.Padding = binary.BigEndian.Uint16(b[14:18])
+	h.Padding = binary.BigEndian.Uint16(b[14:16])
 
 	if h.Version != HeaderVersion {
 		return errors.New("header version mismatch")
