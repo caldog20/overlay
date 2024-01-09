@@ -151,7 +151,7 @@ func (peer *Peer) Handshake() {
 		if buffer == nil {
 			return
 		}
-		log.Printf("peer %d - received handshake message - remote: %s", peer.ID, peer.raddr.String())
+		//log.Printf("peer %d - received handshake message - remote: %s", peer.ID, peer.raddr.String())
 		// received handshake inbound, process
 		state := peer.noise.state.Load()
 		switch state {
