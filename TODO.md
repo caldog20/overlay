@@ -45,11 +45,16 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 - Define rules for peers and peer updates
   - What updates should be received from controller after initial state pull?
     - How do these updates affect active peers?
+    - Peer connects
+    - Peer disconnects
+    - Peer endpoint change after disconnect/reconnect
   - How can we track connected/disconnected state and should peers track this state for remote peers
   - Add an ability similar to ICE for peers to negotiate ip:port pairs to connect to each other with
     - This should solve peers on the same local network as well
   - Initial handshake on outbound traffic
   - After so many keepalives without any real data, close the peer
+    - should responder only respond to keepalives or send them as well
+    - debounce rx timeout ?
 
 - Peer Timers and handshake initiation rules: (inspired by WireGuard protocol)
   - A handshake is only initiated when outbound traffic is queued for a remote peer
@@ -88,5 +93,5 @@ Wait until first successful encrypted packet is received to ensure handshake is 
 - Then login and continue startup
 - fix stream update handler on node, retry if connection breaks
 - HotPath-
-  - flynn/noise allocates during encrypt/decrypt for 12byte nonce
+  - flynn/noise allocates during encrypt/decrypt for nonce
   - wrap encrypt/decrypt and provide temp buffer for nonce to be reused
