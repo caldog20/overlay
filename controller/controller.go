@@ -18,13 +18,16 @@ type Controller struct {
 	grpcServer   *GRPCServer
 	prefix       netip.Prefix
 	peerChannels sync.Map
+
+	confg *Config
 }
 
-func NewController(store Store) *Controller {
+func NewController(config *Config, store Store) *Controller {
 	c := new(Controller)
 	c.InitIPAM(Prefix)
+	c.confg = config
 
-	gserver := NewGRPCServer(c)
+	gserver := NewGRPCServer(config, c)
 
 	c.store = store
 	c.grpcServer = gserver

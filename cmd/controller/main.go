@@ -11,17 +11,17 @@ import (
 )
 
 func main() {
-	//config, err := controller.GetConfig()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	config, err := controller.GetConfig()
+	if err != nil {
+		log.Fatal("error parsing config: ", err)
+	}
 
-	store, err := controller.NewSqlStore("data.db")
+	store, err := controller.NewSqlStore(config.DbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ctrl := controller.NewController(store)
+	ctrl := controller.NewController(config, store)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -31,7 +31,7 @@ func main() {
 		cancel()
 	}()
 
-	go controller.StartDiscoveryServer(ctx)
+	go controller.StartDiscoveryServer(ctx, config.DiscoveryPort)
 
 	err = ctrl.Run(ctx)
 	if err != nil {

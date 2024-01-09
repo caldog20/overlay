@@ -2,14 +2,18 @@ package controller
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/netip"
 
 	"github.com/caldog20/overlay/proto"
+	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
@@ -25,11 +29,28 @@ type GRPCServer struct {
 	proto.UnimplementedControlPlaneServer
 	controller *Controller
 	server     *grpc.Server
+	config     *Config
 }
 
-func NewGRPCServer(controller *Controller) *GRPCServer {
+func NewGRPCServer(config *Config, controller *Controller) *GRPCServer {
 	grpcServer := new(GRPCServer)
-	gserver := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	grpcServer.config = config
+
+	var creds credentials.TransportCredentials
+
+	if config.AutoCert.Enabled {
+		am := &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(config.AutoCert.Domain),
+			Cache:      autocert.DirCache(config.AutoCert.CacheDir),
+		}
+		creds = credentials.NewTLS(&tls.Config{GetCertificate: am.GetCertificate})
+		go AutocertHandler(am)
+	} else {
+		creds = insecure.NewCredentials()
+	}
+
+	gserver := grpc.NewServer(grpc.Creds(creds))
 	proto.RegisterControlPlaneServer(gserver, grpcServer)
 	reflection.Register(gserver)
 
@@ -40,12 +61,12 @@ func NewGRPCServer(controller *Controller) *GRPCServer {
 }
 
 func (s *GRPCServer) Run() error {
-	conn, err := net.Listen("tcp4", ":9000")
+	conn, err := net.Listen("tcp4", fmt.Sprintf(":%d", s.config.GrpcPort))
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Starting grpc server on port: %d", 9000)
+	log.Printf("Starting grpc server on port: %d", s.config.GrpcPort)
 	return s.server.Serve(conn)
 }
 

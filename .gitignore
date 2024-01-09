@@ -33,3 +33,6 @@ patches/
 # Other Stuff
 .DS_Store
 *.db
+
+# Temporary
+Makefile

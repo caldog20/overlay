@@ -2,13 +2,15 @@ package controller
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 )
 
-func (c *Controller) AutocertHandler(am *autocert.Manager) error {
+func AutocertHandler(am *autocert.Manager) {
+
 	srv := &http.Server{
 		Addr:         ":80",
 		Handler:      am.HTTPHandler(nil),
@@ -19,7 +21,7 @@ func (c *Controller) AutocertHandler(am *autocert.Manager) error {
 
 	err := srv.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
-		return nil
+		return
 	}
-	return err
+	log.Fatal(err)
 }
