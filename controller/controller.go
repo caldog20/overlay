@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"sync"
 
@@ -121,7 +122,8 @@ TOP:
 			goto TOP
 		}
 	}
-	return nextIP.String(), nil
+
+	return fmt.Sprintf("%s/24", nextIP.String()), nil
 }
 
 func (c *Controller) GetPeerUpdateChan(id uint32) chan *proto.UpdateResponse {

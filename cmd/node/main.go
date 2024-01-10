@@ -35,7 +35,7 @@ func main() {
 	//pprof.StartCPUProfile(f)
 	//defer pprof.StopCPUProfile()
 
-	controller := flag.String("controller", "1.1.1.1:9000", "controller address in <http://hostname or ip:port>")
+	controller := flag.String("controller", "10.170.241.66:9000", "controller address in <http://hostname or ip:port>")
 	port := flag.Uint("port", 0, "listen port for udp socket - defaults to 0 for randomly selected port")
 	flag.Parse()
 

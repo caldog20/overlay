@@ -14,7 +14,6 @@ package tun
 import (
 	"errors"
 	"fmt"
-	"golang.zx2c4.com/wintun"
 	"net/netip"
 	"os"
 	"sync"
@@ -42,7 +41,7 @@ type WinTun struct {
 	writeLock sync.Mutex // Currently used because I am calling write from multiple goroutines
 }
 
-func NewTun() (*WinTun, error) {
+func NewTun() (Tun, error) {
 	wt, err := wintun.CreateAdapter(WintunAdapaterName, WuntunAdapaterType, WintunStaticRequestedGUID)
 	if err != nil {
 		return nil, fmt.Errorf("error creating wintun adapater: %w", err)

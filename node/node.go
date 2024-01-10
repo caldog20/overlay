@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/caldog20/overlay/tun"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
 	"google.golang.org/grpc"
@@ -23,9 +24,9 @@ import (
 
 type Node struct {
 	conn *Conn // This will change to multiple conns in future
-	tun  *Tun
+	tun  tun.Tun
 	id   uint32
-	ip   netip.Addr
+	ip   netip.Prefix
 
 	prefOutboundIP     netip.Addr
 	discoveredEndpoint netip.AddrPort
@@ -87,7 +88,7 @@ func NewNode(port uint16, controller string) (*Node, error) {
 
 	node.port = uint16(finalPort)
 
-	node.tun, err = NewTun()
+	node.tun, err = tun.NewTun()
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (node *Node) Run(ctx context.Context) {
 	node.SetRemoteEndpoint(ep)
 
 	// Configure tunnel ip/routes
-	err = node.tun.ConfigureInterface(node.ip)
+	err = node.tun.ConfigureIPAddress(node.ip)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func (node *Node) Run(ctx context.Context) {
 	node.StartUpdateStream(ctx)
 
 	go node.conn.ReadPackets(node.OnUDPPacket, 0)
-	go node.tun.ReadPackets(node.OnTunnelPacket)
+	go node.ReadPackets(node.OnTunnelPacket)
 
 	// TODO
 	<-ctx.Done()
@@ -219,15 +220,14 @@ func (node *Node) OnTunnelPacket(buffer *OutboundBuffer) {
 	}
 
 	// TODO Move this
-	if ipHeader.Dst.Equal(node.ip.AsSlice()) {
+	if ipHeader.Dst.Equal(node.ip.Addr().AsSlice()) {
 		// destination is local tunnel, drop
 		PutOutboundBuffer(buffer)
 		return
 	}
 
 	dst, _ := netip.AddrFromSlice(ipHeader.Dst.To4())
-	pfx, _ := node.ip.Prefix(24)
-	if !pfx.Contains(dst) {
+	if !node.ip.Masked().Contains(dst) {
 		// destination is not in network, drop
 		PutOutboundBuffer(buffer)
 		return

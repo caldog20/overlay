@@ -25,7 +25,7 @@ func (node *Node) Login() error {
 	}
 
 	node.id = login.Config.Id
-	node.ip = netip.MustParseAddr(login.Config.TunnelIp)
+	node.ip = netip.MustParsePrefix(login.Config.TunnelIp)
 
 	return nil
 }

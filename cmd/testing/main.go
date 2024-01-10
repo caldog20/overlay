@@ -9,6 +9,9 @@ import (
 
 func main() {
 
+	p := netip.MustParsePrefix("100.70.0.0/24")
+	fmt.Println(p.Addr().Next().String())
+
 	addr, _ := net.InterfaceAddrs()
 	for _, a := range addr {
 		//fmt.Println(a.Network())
