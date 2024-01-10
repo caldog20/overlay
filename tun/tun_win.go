@@ -12,16 +12,21 @@
 package tun
 
 import (
+	"errors"
 	"fmt"
+	"golang.zx2c4.com/wintun"
+	"net/netip"
+	"os"
 	"sync"
 	"sync/atomic"
 
 	"golang.org/x/sys/windows"
+	"golang.zx2c4.com/wireguard/windows/tunnel/winipcfg"
 )
 
 var (
 	WintunAdapaterName        = "WintunTestAdp"
-	WuntunAdapaterType        = "overlay"
+	WuntunAdapaterType        = "Wintun"
 	WintunStaticRequestedGUID *windows.GUID
 )
 
@@ -37,10 +42,10 @@ type WinTun struct {
 	writeLock sync.Mutex // Currently used because I am calling write from multiple goroutines
 }
 
-func NewTun() (Tun, error) {
+func NewTun() (*WinTun, error) {
 	wt, err := wintun.CreateAdapter(WintunAdapaterName, WuntunAdapaterType, WintunStaticRequestedGUID)
 	if err != nil {
-		return nil, errors.New("error creating wintun adapater")
+		return nil, fmt.Errorf("error creating wintun adapater: %w", err)
 	}
 
 	sess, err := wt.StartSession(0x800000) // 8Mib Ring Capacity
@@ -51,18 +56,17 @@ func NewTun() (Tun, error) {
 
 	rw := sess.ReadWaitEvent()
 
-	wintun := &WinTun{
+	return &WinTun{
+		wt:       wt,
 		name:     WintunAdapaterName,
 		handle:   windows.InvalidHandle,
 		readWait: rw,
 		session:  sess,
-	}
-
-	return wintun, nil
+	}, nil
 }
 
-func (tun *WinTun) Name() (string, error) {
-	return WintunAdapaterName, nil
+func (tun *WinTun) Name() string {
+	return WintunAdapaterName
 }
 
 func (tun *WinTun) Read(b []byte) (int, error) {
@@ -124,19 +128,39 @@ func (tun *WinTun) Write(b []byte) (int, error) {
 }
 
 func (tun *WinTun) Close() error {
+	var closeErr error
 	tun.closeOnce.Do(func() {
 		tun.close.Store(true)
 		windows.SetEvent(tun.readWait)
 		tun.running.Wait()
 		tun.session.End()
 		if tun.wt != nil {
-			tun.wt.Close()
+			closeErr = tun.wt.Close()
 		}
 	})
 
-	return nil
+	return closeErr
 }
 
-func (tun *WinTun) MTU() int {
+func (tun *WinTun) MTU() (int, error) {
 	return 1400, nil
+}
+
+func (tun *WinTun) LUID() uint64 {
+	tun.running.Add(1)
+	defer tun.running.Done()
+	if tun.close.Load() {
+		return 0
+	}
+	return tun.wt.LUID()
+}
+
+func (tun *WinTun) ConfigureIPAddress(addr netip.Prefix) error {
+	luid := winipcfg.LUID(tun.LUID())
+
+	err := luid.AddIPAddress(addr)
+	if err != nil {
+		return err
+	}
+	return nil
 }
