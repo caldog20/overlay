@@ -6,7 +6,7 @@ import (
 
 type OnTunnelPacket func(buffer *OutboundBuffer)
 
-func (node *Node) ReadPackets(callback OnTunnelPacket) {
+func (node *Node) ReadTunPackets(callback OnTunnelPacket) {
 	for {
 		buffer := GetOutboundBuffer()
 		n, err := node.tun.Read(buffer.packet)

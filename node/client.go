@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/caldog20/overlay/conn"
 	"github.com/caldog20/overlay/proto"
 	pb "google.golang.org/protobuf/proto"
 )
@@ -44,9 +45,9 @@ func (node *Node) DiscoverPublicEndpoint() (string, error) {
 	ua, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", addr, 5050))
 	node.conn.WriteToUDP(out, ua)
 
-	node.conn.uc.SetReadDeadline(time.Now().Add(time.Second * 2))
+	node.conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	n, _, err := node.conn.ReadFromUDP(buf)
-	node.conn.uc.SetReadDeadline(time.Time{})
+	node.conn.SetReadDeadline(time.Time{})
 
 	if err != nil {
 		log.Fatal(err)
@@ -140,7 +141,7 @@ func (node *Node) HandleUpdate(update *proto.UpdateResponse) {
 
 func (node *Node) handlePeerPunchRequest(update *proto.UpdateResponse) {
 	endpoint := update.PeerList.RemotePeer[0].Endpoint
-	ua, err := net.ResolveUDPAddr(UDPType, endpoint)
+	ua, err := net.ResolveUDPAddr(conn.UDPType, endpoint)
 	if err != nil {
 		log.Printf("error parsing udp punch address: %s", err)
 		return
@@ -222,7 +223,7 @@ func (peer *Peer) Update(info *proto.RemotePeer) error {
 
 	if CompareAddrPort(currentEndpoint, newEndpoint) != 0 {
 		peer.mu.Lock()
-		newRemote, err := net.ResolveUDPAddr(UDPType, newEndpoint.String())
+		newRemote, err := net.ResolveUDPAddr(conn.UDPType, newEndpoint.String())
 		if err != nil {
 			log.Println("error updating peer endpoint udp address")
 		} else {

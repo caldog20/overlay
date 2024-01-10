@@ -82,11 +82,11 @@ func DecodeBase64Key(key string) ([]byte, error) {
 }
 
 func ParseAddr(addr string) (netip.Addr, error) {
-	address, err := netip.ParseAddr(addr)
+	cidr, err := netip.ParsePrefix(addr)
 	if err != nil {
 		return netip.Addr{}, err
 	}
-	return address, err
+	return cidr.Addr(), nil
 }
 
 func ParseAddrPort(ap string) (netip.AddrPort, error) {

@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/caldog20/overlay/conn"
 	"github.com/caldog20/overlay/tun"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
@@ -23,7 +24,7 @@ import (
 )
 
 type Node struct {
-	conn *Conn // This will change to multiple conns in future
+	conn *conn.Conn // This will change to multiple conns in future
 	tun  tun.Tun
 	id   uint32
 	ip   netip.Prefix
@@ -71,12 +72,12 @@ func NewNode(port uint16, controller string) (*Node, error) {
 		return nil, errors.New("invalid udp port")
 	}
 
-	node.conn, err = NewConn(port)
+	node.conn, err = conn.NewConn(port)
 	if err != nil {
 		return nil, err
 	}
 
-	_, p, err := net.SplitHostPort(node.conn.uc.LocalAddr().String())
+	_, p, err := net.SplitHostPort(node.conn.LocalAddr().String())
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +143,14 @@ func (node *Node) Run(ctx context.Context) {
 
 	node.StartUpdateStream(ctx)
 
-	go node.conn.ReadPackets(node.OnUDPPacket, 0)
-	go node.ReadPackets(node.OnTunnelPacket)
+	go node.ReadUDPPackets(node.OnUDPPacket, 0)
+	go node.ReadTunPackets(node.OnTunnelPacket)
 
 	// TODO
 	<-ctx.Done()
+
+	node.conn.Close()
+	node.tun.Close()
 
 	//for _, peer := range node.maps.id {
 	//	if peer.running.Load() {

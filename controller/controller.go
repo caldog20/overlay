@@ -117,7 +117,8 @@ func (c *Controller) AllocateIP() (string, error) {
 
 TOP:
 	for _, ip := range ips {
-		if ip == nextIP.String() {
+		p := netip.MustParsePrefix(ip)
+		if p.Addr() == nextIP {
 			nextIP = nextIP.Next()
 			goto TOP
 		}
