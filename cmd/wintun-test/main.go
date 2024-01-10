@@ -1,4 +1,4 @@
-package wintun_test
+package main
 
 import (
 	"fmt"
