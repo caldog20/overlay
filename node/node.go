@@ -230,6 +230,8 @@ func (node *Node) OnTunnelPacket(buffer *OutboundBuffer) {
 		return
 	}
 
+	// TODO Firewall implementation
+	// Check for broadcasting and block
 	dst, _ := netip.AddrFromSlice(ipHeader.Dst.To4())
 	if !node.ip.Masked().Contains(dst) {
 		// destination is not in network, drop

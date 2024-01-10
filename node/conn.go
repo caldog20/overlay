@@ -1,7 +1,9 @@
 package node
 
 import (
+	"errors"
 	"log"
+	"net"
 )
 
 type OnUDPPacket func(buffer *InboundBuffer, index int)
@@ -12,7 +14,10 @@ func (node *Node) ReadUDPPackets(callback OnUDPPacket, index int) {
 		n, raddr, err := node.conn.ReadFromUDP(buffer.in)
 		if err != nil {
 			PutInboundBuffer(buffer)
-			log.Println(err)
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			log.Printf("%v", err)
 			continue
 		}
 

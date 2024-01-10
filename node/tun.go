@@ -1,7 +1,9 @@
 package node
 
 import (
+	"errors"
 	"log"
+	"os"
 )
 
 type OnTunnelPacket func(buffer *OutboundBuffer)
@@ -12,7 +14,10 @@ func (node *Node) ReadTunPackets(callback OnTunnelPacket) {
 		n, err := node.tun.Read(buffer.packet)
 		if err != nil {
 			PutOutboundBuffer(buffer)
-			log.Println(err)
+			if errors.Is(err, os.ErrClosed) {
+				return
+			}
+			log.Printf("%v", err)
 			continue
 		}
 
