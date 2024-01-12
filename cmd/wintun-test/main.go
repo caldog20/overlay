@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/netip"
 
@@ -20,17 +21,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	buf := make([]byte, 1400)
 	for {
-	}
-	//buf := make([]byte, 1400)
-	//for {
-	//	n, err := tun.Read(buf)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//
-	//	fmt.Printf("read packet: %d bytes\n", n)
-	//	fmt.Printf("%s", string(buf[:n]))
-	//}
+		n, err := tun.Read(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
 
+		fmt.Printf("read packet: %d bytes\n", n)
+		fmt.Printf("%s\n", string(buf[:n]))
+	}
 }

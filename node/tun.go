@@ -4,11 +4,13 @@ import (
 	"errors"
 	"log"
 	"os"
+	"runtime"
 )
 
 type OnTunnelPacket func(buffer *OutboundBuffer)
 
 func (node *Node) ReadTunPackets(callback OnTunnelPacket) {
+	runtime.LockOSThread()
 	for {
 		buffer := GetOutboundBuffer()
 		n, err := node.tun.Read(buffer.packet)

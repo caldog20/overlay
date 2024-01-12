@@ -21,6 +21,10 @@ const (
 	TimerKeepalive        = time.Second * 10
 	// Counts
 	CountHandshakeRetries = 10
+
+	InboundChannelSize   = 1024
+	OutboundChannelSize  = 1024
+	HandshakeChannelSize = 3
 )
 
 // TODO proper self-contained state machine for noise handshakes
@@ -71,9 +75,9 @@ func NewPeer() *Peer {
 	peer := new(Peer)
 
 	// channels
-	peer.inbound = make(chan *InboundBuffer, 16)   // buffered number???
-	peer.outbound = make(chan *OutboundBuffer, 64) // allow up to 64 packets to be cached/pending handshake???
-	peer.handshakes = make(chan *InboundBuffer, 3) // Handshake packet buffering???
+	peer.inbound = make(chan *InboundBuffer, InboundChannelSize)      // buffered number???
+	peer.outbound = make(chan *OutboundBuffer, OutboundChannelSize)   // allow up to 64 packets to be cached/pending handshake???
+	peer.handshakes = make(chan *InboundBuffer, HandshakeChannelSize) // Handshake packet buffering???
 
 	// TODO split out into separate type with methods/callbacks
 	peer.timers.handshakeSent = time.AfterFunc(TimerHandshakeTimeout, peer.HandshakeTimeout)

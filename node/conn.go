@@ -4,11 +4,13 @@ import (
 	"errors"
 	"log"
 	"net"
+	"runtime"
 )
 
 type OnUDPPacket func(buffer *InboundBuffer, index int)
 
 func (node *Node) ReadUDPPackets(callback OnUDPPacket, index int) {
+	runtime.LockOSThread()
 	for {
 		buffer := GetInboundBuffer()
 		n, raddr, err := node.conn.ReadFromUDP(buffer.in)

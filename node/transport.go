@@ -17,7 +17,7 @@ func (peer *Peer) contextDone() bool {
 
 func (peer *Peer) Inbound() {
 	// log.Print("starting inbound routine")
-
+	defer peer.wg.Done()
 	var err error
 
 	for buffer := range peer.inbound {
@@ -52,6 +52,7 @@ func (peer *Peer) Inbound() {
 }
 
 func (peer *Peer) Outbound() {
+	defer peer.wg.Done()
 	for buffer := range peer.outbound {
 		// nil value is signal to exit the routine
 		if buffer == nil {
@@ -144,6 +145,7 @@ func (peer *Peer) TrySendHandshake(retry bool) {
 
 // TODO completely rewrite this with proper state tracking and error handling
 func (peer *Peer) Handshake() {
+	defer peer.wg.Done()
 	// log.Print("starting handshake routine")
 	// TODO handshake completion function
 	for buffer := range peer.handshakes {
