@@ -11,8 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/caldog20/overlay/conn"
-	"github.com/caldog20/overlay/tun"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
 	"google.golang.org/grpc"
@@ -20,7 +18,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
+	"github.com/caldog20/overlay/conn"
 	"github.com/caldog20/overlay/proto"
+	"github.com/caldog20/overlay/tun"
 )
 
 type Node struct {
@@ -97,7 +97,6 @@ func NewNode(port uint16, controller string) (*Node, error) {
 	// TODO Fix this/move when fixing login/register flow
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
 	gconn, err := grpc.DialContext(ctx, controller, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-
 	if err != nil {
 		log.Fatal("error connecting to controller grpc: ", err)
 	}

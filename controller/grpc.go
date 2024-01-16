@@ -3,22 +3,20 @@ package controller
 import (
 	"context"
 	"crypto/tls"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
 	"net"
-	"net/netip"
 
-	"github.com/caldog20/overlay/proto"
 	"golang.org/x/crypto/acme/autocert"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"github.com/caldog20/overlay/proto"
 )
 
 const (
@@ -70,7 +68,10 @@ func (s *GRPCServer) Run() error {
 	return s.server.Serve(conn)
 }
 
-func (s *GRPCServer) LoginPeer(ctx context.Context, req *proto.LoginRequest) (*proto.LoginResponse, error) {
+func (s *GRPCServer) LoginPeer(
+	ctx context.Context,
+	req *proto.LoginRequest,
+) (*proto.LoginResponse, error) {
 	err := validatePublicKey(req.PublicKey)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "public key is invalid")
@@ -90,7 +91,10 @@ func (s *GRPCServer) LoginPeer(ctx context.Context, req *proto.LoginRequest) (*p
 	return &proto.LoginResponse{Config: cfg}, nil
 }
 
-func (s *GRPCServer) RegisterPeer(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {
+func (s *GRPCServer) RegisterPeer(
+	ctx context.Context,
+	req *proto.RegisterRequest,
+) (*proto.RegisterResponse, error) {
 	err := validatePublicKey(req.PublicKey)
 	if err != nil {
 		return nil, err
@@ -109,7 +113,10 @@ func (s *GRPCServer) RegisterPeer(ctx context.Context, req *proto.RegisterReques
 }
 
 // TODO Authentication/encryption for messages
-func (s *GRPCServer) SetPeerEndpoint(ctx context.Context, endpoint *proto.Endpoint) (*proto.EmptyResponse, error) {
+func (s *GRPCServer) SetPeerEndpoint(
+	ctx context.Context,
+	endpoint *proto.Endpoint,
+) (*proto.EmptyResponse, error) {
 	err := validateID(endpoint.Id)
 	if err != nil {
 		return nil, err
@@ -128,7 +135,10 @@ func (s *GRPCServer) SetPeerEndpoint(ctx context.Context, endpoint *proto.Endpoi
 	return &proto.EmptyResponse{}, nil
 }
 
-func (s *GRPCServer) Update(req *proto.UpdateRequest, stream proto.ControlPlane_UpdateServer) error {
+func (s *GRPCServer) Update(
+	req *proto.UpdateRequest,
+	stream proto.ControlPlane_UpdateServer,
+) error {
 	err := validateID(req.Id)
 	if err != nil {
 		return err
@@ -207,7 +217,10 @@ func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*proto.Remot
 	return rp, nil
 }
 
-func (s *GRPCServer) Punch(ctx context.Context, req *proto.PunchRequest) (*proto.EmptyResponse, error) {
+func (s *GRPCServer) Punch(
+	ctx context.Context,
+	req *proto.PunchRequest,
+) (*proto.EmptyResponse, error) {
 	err := validateID(req.ReqPeerId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrInvalidPeerID.Error())
@@ -224,40 +237,4 @@ func (s *GRPCServer) Punch(ctx context.Context, req *proto.PunchRequest) (*proto
 	}
 
 	return &proto.EmptyResponse{}, nil
-}
-
-func validatePublicKey(key string) error {
-	if key == "" {
-		return ErrInvalidPublicKey
-	}
-
-	k, err := base64.StdEncoding.DecodeString(key)
-	if err != nil {
-		return ErrInvalidPublicKey
-	}
-
-	if len(k) != 32 {
-		return ErrInvalidPublicKey
-	}
-
-	return nil
-}
-
-func validateID(id uint32) error {
-	if id == 0 {
-		return ErrInvalidPeerID
-	}
-
-	return nil
-}
-
-func validateEndpoint(endpoint string) error {
-	if endpoint == "" {
-		return ErrInvalidEndpoint
-	}
-	_, err := netip.ParseAddrPort(endpoint)
-	if err != nil {
-		return ErrInvalidEndpoint
-	}
-	return nil
 }
