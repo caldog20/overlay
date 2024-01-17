@@ -9,6 +9,7 @@ type Config struct {
 	GrpcPort      uint16 `env:"GRPC_PORT,default=9000"`
 	HttpPort      uint16 `env:"HTTP_PORT,default=443"`
 	DiscoveryPort uint16 `env:"DISCOVERY_PORT,default=5050"`
+	DbEnabled     bool   `env:"DB_ENABLED"`
 	DbPath        string `env:"DB_PATH,required"`
 	AutoCert      struct {
 		Enabled  bool   `env:"AUTOCERT_ENABLED,default=false"`

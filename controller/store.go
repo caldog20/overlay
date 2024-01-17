@@ -2,6 +2,7 @@ package controller
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type Store interface {
@@ -18,7 +19,16 @@ type Store interface {
 
 type MapStore struct {
 	// primary key is uint32 ID
-	m sync.Map
+	m       sync.Map
+	counter atomic.Uint32
+}
+
+func NewStore(config *Config) (Store, error) {
+	if config.DbEnabled {
+		return NewSqlStore(config.DbPath)
+	} else {
+		return NewMapStore(), nil
+	}
 }
 
 func NewMapStore() Store {
@@ -87,6 +97,8 @@ func (s *MapStore) GetPeerIPs() ([]string, error) {
 }
 
 func (s *MapStore) CreatePeer(peer *Peer) error {
+	id := s.counter.Add(1)
+	peer.ID = id
 	_, existing := s.m.LoadOrStore(peer.ID, peer)
 	if existing {
 		return ErrAlreadyExists

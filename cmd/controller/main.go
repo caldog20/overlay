@@ -16,7 +16,7 @@ func main() {
 		log.Fatal("error parsing config: ", err)
 	}
 
-	store, err := controller.NewSqlStore(config.DbPath)
+	store, err := controller.NewStore(config)
 	if err != nil {
 		log.Fatal(err)
 	}

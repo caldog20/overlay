@@ -2,10 +2,9 @@ package controller
 
 import (
 	"errors"
-	//"database/sql"
 	"fmt"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
