@@ -4,25 +4,30 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/netip"
+
+	"github.com/google/uuid"
 )
 
 func main() {
+	id := uuid.New()
+	id2 := uuid.New()
 
-	p := netip.MustParsePrefix("100.70.0.0/24")
-	fmt.Println(p.Addr().Next().String())
+	fmt.Println(len(id.String()))
+	fmt.Println(len(id2.String()))
+	//p := netip.MustParsePrefix("100.70.0.0/24")
+	//fmt.Println(p.Addr().Next().String())
+	//
+	//addr, _ := net.InterfaceAddrs()
+	//for _, a := range addr {
+	//	//fmt.Println(a.Network())
+	//	p := netip.MustParsePrefix(a.String())
+	//	ip := p.Addr()
+	//	if ip.Is4() {
+	//		fmt.Println(p.String(), ip.String())
+	//	}
+	//}
 
-	addr, _ := net.InterfaceAddrs()
-	for _, a := range addr {
-		//fmt.Println(a.Network())
-		p := netip.MustParsePrefix(a.String())
-		ip := p.Addr()
-		if ip.Is4() {
-			fmt.Println(p.String(), ip.String())
-		}
-	}
-
-	//fmt.Println("Preferred Outbound: ", GetOutboundIP().String())
+	// fmt.Println("Preferred Outbound: ", GetOutboundIP().String())
 }
 
 // Get preferred outbound ip of this machine

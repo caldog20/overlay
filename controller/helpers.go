@@ -3,34 +3,22 @@ package controller
 import (
 	"encoding/base64"
 	"net/netip"
-)
 
-type Error string
-
-func (e Error) Error() string { return string(e) }
-
-const (
-	ErrNotFound           = Error("object not found")
-	ErrAlreadyExists      = Error("object already exists")
-	ErrCastingObject      = Error("error casting object")
-	ErrInvalidPeerID      = Error("invalid peer id")
-	ErrInvalidPublicKey   = Error("invalid public key")
-	ErrInvalidRegisterKey = Error("invalid register key")
-	ErrInvalidEndpoint    = Error("invalid endpoint")
+	"github.com/caldog20/overlay/controller/types"
 )
 
 func validatePublicKey(key string) error {
 	if key == "" {
-		return ErrInvalidPublicKey
+		return types.ErrInvalidPublicKey
 	}
 
 	k, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		return ErrInvalidPublicKey
+		return types.ErrInvalidPublicKey
 	}
 
 	if len(k) != 32 {
-		return ErrInvalidPublicKey
+		return types.ErrInvalidPublicKey
 	}
 
 	return nil
@@ -38,7 +26,7 @@ func validatePublicKey(key string) error {
 
 func validateID(id uint32) error {
 	if id == 0 {
-		return ErrInvalidPeerID
+		return types.ErrInvalidPeerID
 	}
 
 	return nil
@@ -46,11 +34,11 @@ func validateID(id uint32) error {
 
 func validateEndpoint(endpoint string) error {
 	if endpoint == "" {
-		return ErrInvalidEndpoint
+		return types.ErrInvalidEndpoint
 	}
 	_, err := netip.ParseAddrPort(endpoint)
 	if err != nil {
-		return ErrInvalidEndpoint
+		return types.ErrInvalidEndpoint
 	}
 	return nil
 }

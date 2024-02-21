@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package control.v1;
+
+option go_package = "github.com/caldog20/overlay/proto/gen/control/v1;controlv1";
+import "control/v1/peer.proto";
+
+service ControllerService {
+  // rpc LoginPeer(LoginPeerRequest) returns (LoginPeerResponse) {}
+  rpc RegisterPeer(RegisterPeerRequest) returns (RegisterPeerResponse) {}
+  //  rpc Update(UpdateRequest) returns (stream UpdateResponse) {}
+  //  rpc Punch(PunchRequest) returns (EmptyResponse) {}
+}
+
+message LoginPeerRequest { string public_key = 1; }
+
+message LoginPeerResponse { PeerConfig config = 1; }
+
+message RegisterPeerRequest { string node_key = 1; }
+
+message RegisterPeerResponse {}
+
+message Endpoint {
+  uint32 id = 1;
+  string endpoint = 2;
+}
+
+message EmptyResponse {}
+
+enum UpdateType {
+  INIT = 0;
+  CONNECT = 1;
+  DISCONNECT = 2;
+  PUNCH = 3;
+}
+
+message UpdateRequest { uint32 id = 1; }
+
+message UpdateResponse {
+  UpdateType update_type = 1;
+  RemotePeerList peer_list = 2;
+}
+
+message EndpointDiscovery { uint32 id = 1; }
+
+message EndpointDiscoveryResponse { string endpoint = 1; }
+
+// message PunchRequest {
+//   uint32 req_peer_id = 1;
+//   uint32 dst_peer_id = 2;
+//   string endpoint = 3;
+// }
+//
+// message PunchNotification {
+//   string endpoint = 1;
+// }

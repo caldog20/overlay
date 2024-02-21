@@ -36,3 +36,4 @@ patches/
 
 # Temporary
 Makefile
+.DS_Store
