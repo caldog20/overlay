@@ -2,10 +2,24 @@ package controller
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/netip"
 
+	"connectrpc.com/connect"
 	"github.com/caldog20/overlay/controller/types"
+	"github.com/google/uuid"
 )
+
+func validateRegisterKey(key string) *connect.Error {
+	_, err := uuid.Parse(key)
+	if err != nil {
+		return connect.NewError(
+			connect.CodeUnauthenticated,
+			errors.New("invalid register key in header"),
+		)
+	}
+	return nil
+}
 
 func validatePublicKey(key string) error {
 	if key == "" {

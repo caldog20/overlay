@@ -1,0 +1,58 @@
+syntax = "proto3";
+package api.v1;
+option go_package = "github.com/caldog20/overlay/proto/gen/api/v1;apiv1";
+
+message Peer {
+  uint32 id = 1;
+  string public_key = 2;
+  string endpoint = 3;
+  string tunnel_ip = 4;
+  bool connected = 5;
+}
+
+message PeerConfig {
+  uint32 id = 1;
+  string tunnel_ip = 2;
+
+  // Policy policy = 3;
+  // string domain = 4;
+}
+
+message RemotePeerList {
+  uint32 count = 1;
+  repeated Peer remote_peers = 2;
+}
+
+message LoginPeerRequest {
+  string public_key = 1;
+  string endpoint = 2;
+}
+
+message LoginPeerResponse { PeerConfig config = 1; }
+
+message RegisterPeerRequest {
+  string node_key = 1;
+  string register_key = 2;
+}
+
+message RegisterPeerResponse {}
+
+enum UpdateType {
+  INIT = 0;
+  CONNECT = 1;
+  DISCONNECT = 2;
+  PUNCH = 3;
+  CONFIG = 4;
+}
+
+message UpdateRequest { uint32 id = 1; }
+
+message UpdateResponse {
+  UpdateType update_type = 1;
+  RemotePeerList peer_list = 2;
+  PeerConfig peer_config = 3;
+}
+
+message EndpointDiscovery { uint32 id = 1; }
+
+message EndpointDiscoveryResponse { string endpoint = 1; }

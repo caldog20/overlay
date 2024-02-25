@@ -1,19 +1,14 @@
 package controller
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"net/http"
+	"log"
+	"math/rand"
 	"net/netip"
-	"time"
+	"strings"
+	"sync"
 
 	"github.com/caldog20/overlay/controller/store"
 	"github.com/caldog20/overlay/controller/types"
-	"github.com/caldog20/overlay/proto/gen/control/v1/controlv1connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -21,62 +16,73 @@ const (
 )
 
 type Controller struct {
-	store  store.Store
-	prefix netip.Prefix
-	config *types.Config
+	store        *store.Store
+	prefix       netip.Prefix
+	config       *types.Config
+	peerChannels sync.Map
 }
 
-func NewController(store store.Store) *Controller {
+func NewController(store *store.Store) *Controller {
+	// TODO: Pull settings from config struct
 	c := &Controller{
-		store: store,
+		store:        store,
+		peerChannels: sync.Map{},
+		prefix:       netip.MustParsePrefix(Prefix),
 	}
 
 	return c
 }
 
-func (c *Controller) Run(ctx context.Context) error {
-	eg, egCtx := errgroup.WithContext(ctx)
-	controlv1 := NewControlV1(c)
+func (c *Controller) AllocatePeerIP() (netip.Addr, error) {
+	usedIPs, err := c.store.GetAllocatedIPs()
+	if err != nil {
+		return netip.Addr{}, err
+	}
 
-	mux := http.NewServeMux()
-	cv1Path, cv1Handler := controlv1connect.NewControllerServiceHandler(controlv1)
-	mux.Handle(cv1Path, cv1Handler)
+	ip := c.prefix.Addr().Next()
 
-	srv := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(
-		mux, &http2.Server{})}
-
-	// Serve connect http2 server
-	eg.Go(func() error {
-		err := srv.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
+	for _, usedIP := range usedIPs {
+		addr := netip.MustParseAddr(usedIP)
+		if addr.Compare(ip) != 0 {
+			break
 		}
-		return err
-	})
+		ip = ip.Next()
+	}
 
-	// Cleanup
-	eg.Go(func() error {
-		<-egCtx.Done()
-
-		//c.ClosePeerUpdateChannels()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("Error on http server shutdown: %w", err)
-		}
-		return nil
-	})
-
-	return eg.Wait()
+	return ip, nil
 }
 
-//func (c *Controller) AllocatePeerIP() (string, error) {
-//	usedIPs, err := c.store.GetAllocatedIPs()
-//	if err != nil {
-//		return "", err
-//	}
-//
-//
-//	return "", nil
-//}
+func (c *Controller) CreateAdminUser() error {
+	log.Println("checking if admin user exists")
+	tempPass := "admin123"
+	admin, err := types.NewUser("admin", tempPass)
+	if err != nil {
+		log.Printf("error creating admin user: %s", err.Error())
+		return err
+	}
+
+	err = c.store.CreateUser(admin)
+	if err != nil {
+		log.Printf("error creating admin user: %s", err.Error())
+		return err
+	}
+
+	log.Printf("admin user created - password: %s", tempPass)
+
+	return nil
+}
+
+func generateRandomPassword() string {
+	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+		"abcdefghijklmnopqrstuvwxyz" +
+		"0123456789")
+	length := 12
+
+	var b strings.Builder
+
+	for i := 0; i < length; i++ {
+		b.WriteRune(chars[rand.Intn(len(chars))])
+	}
+
+	return b.String()
+}

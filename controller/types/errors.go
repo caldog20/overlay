@@ -1,15 +1,15 @@
 package types
 
-type Error string
+import "errors"
 
-func (e Error) Error() string { return string(e) }
-
-const (
-	ErrNotFound           = Error("object not found")
-	ErrAlreadyExists      = Error("object already exists")
-	ErrCastingObject      = Error("error casting object")
-	ErrInvalidPeerID      = Error("invalid peer id")
-	ErrInvalidPublicKey   = Error("invalid public key")
-	ErrInvalidRegisterKey = Error("invalid register key")
-	ErrInvalidEndpoint    = Error("invalid endpoint")
+var (
+	ErrNotFound               = errors.New("object not found")
+	ErrAlreadyExists          = errors.New("object already exists")
+	ErrCastingObject          = errors.New("error casting object")
+	ErrInvalidPeerID          = errors.New("invalid peer id")
+	ErrInvalidPublicKey       = errors.New("invalid public key")
+	ErrInvalidRegisterKey     = errors.New("invalid register key")
+	ErrInvalidEndpoint        = errors.New("invalid endpoint")
+	ErrRegisterKeyNotFound    = errors.New("register key now found")
+	ErrRegisterKeyAlreadyUsed = errors.New("register key has already been used")
 )

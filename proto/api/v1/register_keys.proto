@@ -1,0 +1,8 @@
+syntax = "proto3";
+package api.v1;
+option go_package = "github.com/caldog20/overlay/proto/gen/api/v1;apiv1";
+
+message CreateRegisterKeyRequest { bool reusable = 1; }
+
+message CreateRegisterKeyResponse { string register_key = 1; }
+

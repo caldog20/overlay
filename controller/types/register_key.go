@@ -7,15 +7,17 @@ import (
 
 type RegisterKey struct {
 	gorm.Model
-	Key      string `gorm:"uniqueIndex,not null"`
-	Valid    bool
-	Reusable bool
+	Key  string `gorm:"uniqueIndex,not null"`
+	Used bool
+	User string
 }
 
-func NewRegisterKey() *RegisterKey {
+func NewRegisterKey(user string) *RegisterKey {
 	key := uuid.New()
 	return &RegisterKey{
-		Key: key.String(),
+		Key:  key.String(),
+		Used: true,
+		User: user,
 	}
 }
 

@@ -1,22 +1,49 @@
 package store
 
 import (
+	"fmt"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
+
 	"github.com/caldog20/overlay/controller/types"
 )
 
-type Store interface {
-	GetPeers() ([]types.Peer, error)
-	GetPeerByID(id uint32) (*types.Peer, error)
-	GetPeerByKey(key string) (*types.Peer, error)
-	GetPeerByIP(ip string) (*types.Peer, error)
-	GetAllocatedIPs() ([]string, error)
-	CreatePeer(peer *types.Peer) error
-	UpdatePeer(peer *types.Peer) error
-	GetConnectedPeers() ([]types.Peer, error)
-	UpdatePeerEndpoint(id uint32, endpoint string) error
-	UpatePeerStatus(id uint32, connected bool) error
-	DeletePeer(id uint32) error
-	CreateRegisterKey(key *types.RegisterKey) error
-	GetRegisterKeys() ([]types.RegisterKey, error)
-	GetRegisterKey(key string) (*types.RegisterKey, error)
+type Store struct {
+	db *gorm.DB
+}
+
+func NewSqlStore(path string) (*Store, error) {
+	db, err := gorm.Open(
+		sqlite.Open(fmt.Sprintf("file:%s?cache=shared&_journal_mode=WAL", path)),
+		&gorm.Config{
+			PrepareStmt: true, Logger: logger.Default.LogMode(logger.Error),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	sqlDB.SetMaxIdleConns(3)
+
+	err = sqlDB.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	schema.RegisterSerializer("addr", AddrSerializer{})
+	schema.RegisterSerializer("addrport", AddrPortSerializer{})
+
+	err = db.AutoMigrate(&types.Peer{}, &types.RegisterKey{}, &types.User{})
+	if err != nil {
+		return nil, err
+	}
+	return &Store{db: db}, nil
 }

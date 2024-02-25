@@ -29,7 +29,7 @@ func TestSerializers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store := &SqlStore{db: db}
+	store := &Store{db: db}
 
 	addr := netip.MustParseAddr("100.70.100.1")
 	addrPort := netip.MustParseAddrPort("1.2.3.4:5443")

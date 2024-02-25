@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package api.v1;
+
+option go_package = "github.com/caldog20/overlay/proto/gen/api/v1;apiv1";
+
+import "api/v1/peer.proto";
+import "api/v1/register_keys.proto";
+
+service Controller {
+  rpc RegisterPeer(RegisterPeerRequest) returns (RegisterPeerResponse) {}
+  rpc LoginPeer(LoginPeerRequest) returns (LoginPeerResponse) {}
+//  rpc Update(UpdateRequest) returns (stream UpdateResponse) {}
+  //  rpc Punch(PunchRequest) returns (EmptyResponse) {}
+  rpc GetToken(GetTokenRequest) returns (GetTokenResponse) {}
+//  // CRUD API Stuff
+//  rpc CreateRegisterKey(CreateRegisterKeyRequest)
+//      returns (CreateRegisterKeyResponse) {}
+}
+
+message GetTokenRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message GetTokenResponse {
+  string token = 1;
+}
+
+
+message Endpoint {
+  uint32 id = 1;
+  string endpoint = 2;
+}
+
+message EmptyResponse {}
+
+
+
+// message PunchRequest {
+//   uint32 req_peer_id = 1;
+//   uint32 dst_peer_id = 2;
+//   string endpoint = 3;
+// }
+//
+// message PunchNotification {
+//   string endpoint = 1;
+// }

@@ -39,7 +39,11 @@ func (AddrPortSerializer) Scan(ctx context.Context, field *schema.Field, dst ref
 	case []byte:
 		err = field.Set(ctx, dst, netip.MustParseAddrPort(string(value)))
 	case string:
-		err = field.Set(ctx, dst, netip.MustParseAddrPort(value))
+		if value == "" {
+			err = field.Set(ctx, dst, netip.AddrPort{})
+		} else {
+			err = field.Set(ctx, dst, netip.MustParseAddrPort(value))
+		}
 	default:
 		return fmt.Errorf("Error deserializing addr/port value %#v: %w", dbValue.(string), err)
 	}
@@ -47,8 +51,9 @@ func (AddrPortSerializer) Scan(ctx context.Context, field *schema.Field, dst ref
 }
 
 func (AddrPortSerializer) Value(ctx context.Context, field *schema.Field, dst reflect.Value, fieldValue interface{}) (interface{}, error) {
-	if fieldValue.(netip.AddrPort).IsValid() {
-		return fieldValue.(netip.AddrPort).String(), nil
+	if !fieldValue.(netip.AddrPort).IsValid() {
+		return "", nil
 	}
-	return nil, errors.New("error serializing peer addr/port to database, invalid addr/port")
+	return fieldValue.(netip.AddrPort).String(), nil
+	//return nil, errors.New("error serializing peer addr/port to database, invalid addr/port")
 }

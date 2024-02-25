@@ -2,12 +2,21 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/caldog20/overlay/controller"
+	"github.com/caldog20/overlay/proto/gen/api/v1/apiv1connect"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/caldog20/overlay/controller/store"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +46,43 @@ var (
 			}
 
 			ctrl := controller.NewController(store)
-			log.Fatal(ctrl.Run(ctx))
+			ctrl.CreateAdminUser()
+
+			eg, egCtx := errgroup.WithContext(ctx)
+
+			mux := http.NewServeMux()
+			apiv1Path, apiv1Handler := apiv1connect.NewControllerHandler(ctrl)
+			mux.Handle(apiv1Path, apiv1Handler)
+
+			srv := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(
+				mux, &http2.Server{})}
+
+			// Serve connect http2 server
+			eg.Go(func() error {
+				err := srv.ListenAndServe()
+				if errors.Is(err, http.ErrServerClosed) {
+					return nil
+				}
+				return err
+			})
+
+			// Cleanup
+			eg.Go(func() error {
+				<-egCtx.Done()
+
+				//c.ClosePeerUpdateChannels()
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				if err := srv.Shutdown(shutdownCtx); err != nil {
+					return fmt.Errorf("Error on http server shutdown: %w", err)
+				}
+				return nil
+			})
+
+			if err = eg.Wait(); err != nil {
+				log.Fatal(err)
+			}
 		},
 	}
 )

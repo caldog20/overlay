@@ -36,4 +36,4 @@ patches/
 
 # Temporary
 Makefile
-.DS_Store
+proto/gen

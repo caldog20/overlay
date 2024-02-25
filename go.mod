@@ -5,9 +5,11 @@ go 1.21
 require (
 	connectrpc.com/connect v1.14.0
 	github.com/glebarez/sqlite v1.10.0
+	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.3.1
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
+	golang.org/x/crypto v0.16.0
 	golang.org/x/net v0.19.0
 	golang.org/x/sync v0.6.0
 	google.golang.org/protobuf v1.32.0
