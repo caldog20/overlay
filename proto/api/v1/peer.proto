@@ -38,11 +38,11 @@ message RegisterPeerRequest {
 message RegisterPeerResponse {}
 
 enum UpdateType {
-  INIT = 0;
-  CONNECT = 1;
-  DISCONNECT = 2;
-  PUNCH = 3;
-  CONFIG = 4;
+  UPDATE_TYPE_INIT_UNSPECIFIED = 0;
+  UPDATE_TYPE_CONNECT = 1;
+  UPDATE_TYPE_DISCONNECT = 2;
+  UPDATE_TYPE_PUNCH = 3;
+  UPDATE_TYPE_CONFIG = 4;
 }
 
 message UpdateRequest { uint32 id = 1; }
@@ -53,6 +53,6 @@ message UpdateResponse {
   PeerConfig peer_config = 3;
 }
 
-message EndpointDiscovery { uint32 id = 1; }
+message EndpointDiscovery {}
 
 message EndpointDiscoveryResponse { string endpoint = 1; }

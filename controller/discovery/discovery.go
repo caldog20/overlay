@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
-	controlv1 "github.com/caldog20/overlay/proto/gen/control/v1"
+	apiv1 "github.com/caldog20/overlay/proto/gen/api/v1"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -25,11 +26,11 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 	buf := make([]byte, 1500)
 
 	for {
-		select {
-		case <-ctx.Done():
+		if ctxDone(ctx) {
 			return nil
-		default:
 		}
+
+		conn.SetReadDeadline(time.Now().Add(time.Second * 3))
 		n, raddr, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			return nil
@@ -41,14 +42,6 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 			log.Printf("error parsing discovery message: %s", err)
 			continue
 		}
-		//if msg.Id == 0 {
-		//	log.Printf("discovery request ID must not be zero")
-		//	continue
-		//}
-		//_, ok := c.peerChannels.Load(msg.Id)
-		//if !ok {
-		//	continue
-		//}
 
 		reply, err := encodeDiscoveryResponse(raddr.String())
 		if err != nil {
@@ -62,8 +55,8 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 	}
 }
 
-func parseDiscoveryMessage(b []byte) (*controlv1.EndpointDiscovery, error) {
-	msg := &controlv1.EndpointDiscovery{}
+func parseDiscoveryMessage(b []byte) (*apiv1.EndpointDiscovery, error) {
+	msg := &apiv1.EndpointDiscovery{}
 	err := pb.Unmarshal(b, msg)
 	if err != nil {
 		return nil, err
@@ -72,6 +65,15 @@ func parseDiscoveryMessage(b []byte) (*controlv1.EndpointDiscovery, error) {
 }
 
 func encodeDiscoveryResponse(endpoint string) ([]byte, error) {
-	msg := &controlv1.EndpointDiscoveryResponse{Endpoint: endpoint}
+	msg := &apiv1.EndpointDiscoveryResponse{Endpoint: endpoint}
 	return pb.Marshal(msg)
+}
+
+func ctxDone(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/caldog20/overlay/controller"
+	"github.com/caldog20/overlay/controller/discovery"
 	"github.com/caldog20/overlay/proto/gen/api/v1/apiv1connect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -23,11 +24,11 @@ import (
 
 var (
 	storePath string
-	autotls   bool
+	autoCert  bool
 
 	rootCmd = &cobra.Command{
 		Use:   "controller",
-		Short: "ZeroMesh Overlay Controller",
+		Short: "Overlay Controller",
 		Long:  "",
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -46,12 +47,15 @@ var (
 			}
 
 			ctrl := controller.NewController(store)
-			ctrl.CreateAdminUser()
+			err = ctrl.CreateAdminUser()
+			if err != nil {
+				log.Println(err)
+			}
 
 			eg, egCtx := errgroup.WithContext(ctx)
 
 			mux := http.NewServeMux()
-			apiv1Path, apiv1Handler := apiv1connect.NewControllerHandler(ctrl)
+			apiv1Path, apiv1Handler := apiv1connect.NewControllerServiceHandler(ctrl)
 			mux.Handle(apiv1Path, apiv1Handler)
 
 			srv := &http.Server{Addr: ":8080", Handler: h2c.NewHandler(
@@ -63,6 +67,11 @@ var (
 				if errors.Is(err, http.ErrServerClosed) {
 					return nil
 				}
+				return err
+			})
+
+			eg.Go(func() error {
+				err := discovery.StartDiscoveryServer(egCtx, 5000)
 				return err
 			})
 
@@ -89,7 +98,7 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&storePath, "storepath", "store.db", "file path for controller store persistence")
-	rootCmd.PersistentFlags().BoolVar(&autotls, "autotls", false, "enable autotls for controller")
+	rootCmd.PersistentFlags().BoolVar(&autoCert, "autocert", false, "enable autocert for controller")
 }
 
 // TODO handle signals and contextual things here

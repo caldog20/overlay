@@ -5,9 +5,9 @@ package api.v1;
 option go_package = "github.com/caldog20/overlay/proto/gen/api/v1;apiv1";
 
 import "api/v1/peer.proto";
-import "api/v1/register_keys.proto";
+import "api/v1/register_key.proto";
 
-service Controller {
+service ControllerService {
   rpc RegisterPeer(RegisterPeerRequest) returns (RegisterPeerResponse) {}
   rpc LoginPeer(LoginPeerRequest) returns (LoginPeerResponse) {}
 //  rpc Update(UpdateRequest) returns (stream UpdateResponse) {}

@@ -23,15 +23,16 @@ func (c *Controller) RegisterPeer(ctx context.Context, req *connect.Request[apiv
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	peer := &types.Peer{}
-	peerIP, err := c.AllocatePeerIP()
+	ip, err := c.AllocatePeerIP()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.New("error allocating peer ip address"))
 	}
 
-	peer.IP = peerIP
-	peer.NodeKey = nodeKey
-	peer.User = user
+	peer := &types.Peer{
+		IP:      ip,
+		NodeKey: nodeKey,
+		User:    user,
+	}
 
 	err = c.store.CreatePeer(peer)
 	if err != nil {
