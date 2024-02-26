@@ -115,12 +115,11 @@ func (c *Controller) AllocateIP() (string, error) {
 	}
 	nextIP = c.prefix.Addr().Next()
 
-TOP:
 	for _, ip := range ips {
 		p := netip.MustParsePrefix(ip)
 		if p.Addr() == nextIP {
 			nextIP = nextIP.Next()
-			goto TOP
+			continue
 		}
 	}
 
