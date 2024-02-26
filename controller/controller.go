@@ -152,7 +152,7 @@ func (c *Controller) ClosePeerUpdateChannels() {
 }
 
 func (c *Controller) PeerConnected(id uint32) error {
-	err := c.store.UpatePeerStatus(id, true)
+	err := c.store.UpdatePeerStatus(id, true)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func (c *Controller) PeerConnected(id uint32) error {
 func (c *Controller) PeerDisconnected(id uint32) error {
 	c.DeletePeerUpdateChan(id)
 	c.EventPeerDisconnected(id)
-	return c.store.UpatePeerStatus(id, false)
+	return c.store.UpdatePeerStatus(id, false)
 }
 
 func (c *Controller) GetConnectedPeers() ([]Peer, error) {

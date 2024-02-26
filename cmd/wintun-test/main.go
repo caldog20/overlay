@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/netip"
 
-	"github.com/caldog20/overlay/tun"
+	"github.com/caldog20/overlay/node/tun"
 )
 
 func main() {

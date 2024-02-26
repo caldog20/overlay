@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	conn "github.com/caldog20/overlay/node/conn"
+	tun "github.com/caldog20/overlay/node/tun"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
 	"google.golang.org/grpc"
@@ -18,9 +20,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	"github.com/caldog20/overlay/conn"
 	"github.com/caldog20/overlay/proto"
-	"github.com/caldog20/overlay/tun"
 )
 
 type Node struct {

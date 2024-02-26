@@ -90,7 +90,7 @@ func (s *SqlStore) UpdatePeerEndpoint(id uint32, endpoint string) error {
 	return s.db.Model(&Peer{}).Where("id = ?", id).Update("endpoint", endpoint).Error
 }
 
-func (s *SqlStore) UpatePeerStatus(id uint32, connected bool) error {
+func (s *SqlStore) UpdatePeerStatus(id uint32, connected bool) error {
 	return s.db.Model(&Peer{}).Where("id = ?", id).Update("connected", connected).Error
 }
 

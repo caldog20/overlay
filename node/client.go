@@ -10,7 +10,7 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/caldog20/overlay/conn"
+	"github.com/caldog20/overlay/node/conn"
 	"github.com/caldog20/overlay/proto"
 	pb "google.golang.org/protobuf/proto"
 )

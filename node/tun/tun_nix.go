@@ -4,11 +4,12 @@ package tun
 
 import (
 	"fmt"
-	"github.com/songgao/water"
 	"log"
 	"net/netip"
 	"os/exec"
 	"runtime"
+
+	"github.com/songgao/water"
 )
 
 // Currently, this is used for Mac/Linux Tunnels

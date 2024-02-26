@@ -14,7 +14,7 @@ type Store interface {
 	UpdatePeer(peer *Peer) error
 	GetConnectedPeers() ([]Peer, error)
 	UpdatePeerEndpoint(id uint32, endpoint string) error
-	UpatePeerStatus(id uint32, connected bool) error
+	UpdatePeerStatus(id uint32, connected bool) error
 }
 
 type MapStore struct {
@@ -136,7 +136,7 @@ func (s *MapStore) UpdatePeerEndpoint(id uint32, endpoint string) error {
 	return nil
 }
 
-func (s *MapStore) UpatePeerStatus(id uint32, connected bool) error {
+func (s *MapStore) UpdatePeerStatus(id uint32, connected bool) error {
 	p, ok := s.m.Load(id)
 	if !ok {
 		return ErrNotFound
