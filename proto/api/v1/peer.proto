@@ -56,3 +56,13 @@ message UpdateResponse {
 message EndpointDiscovery {}
 
 message EndpointDiscoveryResponse { string endpoint = 1; }
+
+ message PunchRequest {
+   uint32 req_peer_id = 1;
+   uint32 dst_peer_id = 2;
+   string endpoint = 3;
+ }
+
+ message PunchNotification {
+   string endpoint = 1;
+ }

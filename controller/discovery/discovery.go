@@ -11,7 +11,7 @@ import (
 	pb "google.golang.org/protobuf/proto"
 )
 
-func StartDiscoveryServer(ctx context.Context, port uint16) error {
+func RunDiscoveryServer(ctx context.Context, port uint16) error {
 	log.Printf("starting discovery listener on port: %d", port)
 	laddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", port))
 	if err != nil {

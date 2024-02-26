@@ -71,7 +71,7 @@ var (
 			})
 
 			eg.Go(func() error {
-				err := discovery.StartDiscoveryServer(egCtx, 5000)
+				err := discovery.RunDiscoveryServer(egCtx, 5000)
 				return err
 			})
 
