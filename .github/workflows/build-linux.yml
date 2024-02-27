@@ -39,7 +39,7 @@ jobs:
         run: make buf
 
       - name: build controller
-        run: CGO_ENABLED = 0 go build -o /dev/null ./cmd/controller
+        run: CGO_ENABLED=0 go build -o /dev/null ./cmd/controller
 
       - name: build node
         run: CGO_ENABLED=0 go build -o /dev/null ./cmd/node
