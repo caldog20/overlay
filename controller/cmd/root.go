@@ -10,7 +10,7 @@ import (
 
 	"github.com/caldog20/overlay/controller"
 	"github.com/caldog20/overlay/controller/discovery"
-	"github.com/caldog20/overlay/controller/grpcservice"
+	"github.com/caldog20/overlay/controller/grpcsvc"
 	"github.com/caldog20/overlay/controller/store"
 	proto "github.com/caldog20/overlay/proto/gen"
 	"github.com/spf13/cobra"
@@ -50,7 +50,7 @@ var (
 			//}
 
 			// GRPC Server
-			grpcServer := grpcservice.NewGRPCServer(ctrl)
+			grpcServer := grpcsvc.NewGRPCServer(ctrl)
 			server := grpc.NewServer()
 			proto.RegisterControlPlaneServer(server, grpcServer)
 			reflection.Register(server)

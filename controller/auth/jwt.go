@@ -7,6 +7,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+var (
+	ErrTokenNotValid = errors.New("jwt token is no longer valid")
+	ErrParsingToken  = errors.New("error parsing jwt token")
+)
+
 var jwtKey []byte
 
 type Claims struct {
@@ -34,11 +39,11 @@ func ValidateToken(token string) (string, error) {
 	claims := &Claims{}
 	t, err := jwt.ParseWithClaims(token, claims, keyFunc)
 	if err != nil {
-		return "", err
+		return "", ErrParsingToken
 	}
 
 	if !t.Valid {
-		return "", errors.New("invalid jwt token")
+		return "", ErrTokenNotValid
 	}
 
 	return claims.User, nil

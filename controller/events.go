@@ -25,14 +25,14 @@ func (c *Controller) EventPeerConnected(peerID uint32) {
 	}
 
 	// Send event to all peers about connect
-	var rp []*proto.RemotePeer
+	var rp []*proto.Peer
 
-	rp = append(rp, &proto.RemotePeer{Id: peerID, PublicKey: peer.PublicKey, Endpoint: peer.Endpoint, TunnelIp: peer.IP})
+	rp = append(rp, &proto.Peer{Id: peerID, PublicKey: peer.PublicKey, Endpoint: peer.Endpoint, TunnelIp: peer.IP})
 	update := &proto.UpdateResponse{
 		UpdateType: proto.UpdateResponse_CONNECT,
 		PeerList: &proto.RemotePeerList{
-			Count:      1,
-			RemotePeer: rp,
+			Count: 1,
+			Peers: rp,
 		},
 	}
 
@@ -47,14 +47,14 @@ func (c *Controller) EventPeerConnected(peerID uint32) {
 
 func (c *Controller) EventPeerDisconnected(peerID uint32) {
 	// Send event to all peers about disconnect except disconnected peer
-	var rp []*proto.RemotePeer
+	var rp []*proto.Peer
 
-	rp = append(rp, &proto.RemotePeer{Id: peerID})
+	rp = append(rp, &proto.Peer{Id: peerID})
 	update := &proto.UpdateResponse{
 		UpdateType: proto.UpdateResponse_DISCONNECT,
 		PeerList: &proto.RemotePeerList{
-			Count:      1,
-			RemotePeer: rp,
+			Count: 1,
+			Peers: rp,
 		},
 	}
 
@@ -76,7 +76,7 @@ func (c *Controller) EventPunchRequest(peerID uint32, endpoint string) error {
 		UpdateType: proto.UpdateResponse_PUNCH,
 		PeerList: &proto.RemotePeerList{
 			Count: 1,
-			RemotePeer: []*proto.RemotePeer{{
+			Peers: []*proto.Peer{{
 				Endpoint: endpoint,
 			}},
 		},
