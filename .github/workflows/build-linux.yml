@@ -6,8 +6,8 @@ name: Go
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - '**.go'
+#    paths:
+#      - '**.go'
   pull_request:
     branches: [ "main" ]
 
