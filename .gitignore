@@ -16,13 +16,13 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Go workspace file
 go.work
 
 *test
-go-overlay
+
 bin/
 patches/
 
@@ -33,8 +33,15 @@ patches/
 # Other Stuff
 .DS_Store
 *.db
+*.pprof
 
 # Temporary
-#Makefile
 
+# Generated protobuf/grpc stubs
 proto/gen
+
+# Test executables
+cmd/testing
+cmd/wintun-test
+
+TODO.md
