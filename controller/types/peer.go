@@ -17,24 +17,20 @@ type Peer struct {
 	UpdatedAt time.Time
 }
 
-type PeerConfig struct {
-	ID uint32
-	IP string
-}
-
 func NewPeer(id uint32, key string, ip string, endpoint string) *Peer {
 	return &Peer{ID: id, PublicKey: key, IP: ip, Endpoint: endpoint, Connected: false}
 }
 
-func (p *Peer) GetPeerConfig() *PeerConfig {
-	return &PeerConfig{p.ID, p.IP}
+func (p *Peer) Proto() *proto.Peer {
+	return &proto.Peer{
+		Id:        p.ID,
+		PublicKey: p.PublicKey,
+		Endpoint:  p.Endpoint,
+		TunnelIp:  p.IP,
+	}
 }
 
-func (p *Peer) MarshalRemotePeerConfig() *proto.RemotePeer {
-	return &proto.RemotePeer{}
-}
-
-func (p *PeerConfig) MarshalPeerConfig() *proto.PeerConfig {
+func (p *Peer) ProtoConfig() *proto.PeerConfig {
 	return &proto.PeerConfig{Id: p.ID, TunnelIp: p.IP}
 }
 

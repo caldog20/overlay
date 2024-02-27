@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	controller "github.com/caldog20/overlay/controller"
+	"github.com/caldog20/overlay/controller"
 	"github.com/caldog20/overlay/controller/types"
 	proto "github.com/caldog20/overlay/proto/gen"
 	"google.golang.org/grpc/codes"
@@ -26,6 +26,7 @@ func NewGRPCServer(controller *controller.Controller) *GRPCServer {
 		controller: controller,
 	}
 }
+
 func (s *GRPCServer) LoginPeer(
 	ctx context.Context,
 	req *proto.LoginRequest,
@@ -35,7 +36,7 @@ func (s *GRPCServer) LoginPeer(
 		return nil, status.Error(codes.InvalidArgument, "public key is invalid")
 	}
 
-	config, err := s.controller.LoginPeer(req.PublicKey)
+	peer, err := s.controller.LoginPeer(req.PublicKey)
 	if err != nil {
 		if err == types.ErrNotFound {
 			return nil, status.Error(codes.NotFound, "peer not registered")
@@ -44,7 +45,7 @@ func (s *GRPCServer) LoginPeer(
 		}
 	}
 
-	cfg := config.MarshalPeerConfig()
+	cfg := peer.ProtoConfig()
 
 	return &proto.LoginResponse{Config: cfg}, nil
 }
@@ -123,8 +124,8 @@ func (s *GRPCServer) Update(
 	initialSync := &proto.UpdateResponse{
 		UpdateType: proto.UpdateResponse_INIT,
 		PeerList: &proto.RemotePeerList{
-			Count:      uint32(len(peers)),
-			RemotePeer: peers,
+			Count: uint32(len(peers)),
+			Peers: peers,
 		},
 	}
 
@@ -153,18 +154,18 @@ func (s *GRPCServer) Update(
 	}
 }
 
-func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*proto.RemotePeer, error) {
+func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*proto.Peer, error) {
 	peers, err := s.controller.GetConnectedPeers()
 	if err != nil {
 		return nil, err
 	}
 
-	var rp []*proto.RemotePeer
+	var rp []*proto.Peer
 	for _, p := range peers {
 		if p.ID == connectingPeerID {
 			continue
 		}
-		rp = append(rp, &proto.RemotePeer{
+		rp = append(rp, &proto.Peer{
 			Id:        p.ID,
 			PublicKey: p.PublicKey,
 			Endpoint:  p.Endpoint,

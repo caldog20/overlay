@@ -38,15 +38,13 @@ func NewController(store store.Store) *Controller {
 // LoginPeer logs in an existing peer by public key
 // If peer exists, returns peer configuration
 // If the peer is not registered or does not exist, returns nil peer and ErrNotFound
-func (c *Controller) LoginPeer(publicKey string) (*types.PeerConfig, error) {
+func (c *Controller) LoginPeer(publicKey string) (*types.Peer, error) {
 	peer, err := c.store.GetPeerByKey(publicKey)
 	if err != nil {
 		return nil, err
 	}
 
-	config := peer.GetPeerConfig()
-
-	return config, nil
+	return peer, nil
 }
 
 func (c *Controller) RegisterPeer(publicKey string) error {
@@ -83,21 +81,23 @@ func (c *Controller) InitIPAM(prefix string) error {
 	return nil
 }
 
-// TODO Write real IPAM
+// TODO Write real IPAM functions
 func (c *Controller) AllocateIP() (string, error) {
 	var nextIP netip.Addr
 	ips, err := c.store.GetPeerIPs()
 	if err != nil {
 		return "", err
 	}
+	// Skip zero address
 	nextIP = c.prefix.Addr().Next()
-
+	// Loop through allocated IPs until we find one free
 	for _, ip := range ips {
 		p := netip.MustParsePrefix(ip)
 		if p.Addr() == nextIP {
 			nextIP = nextIP.Next()
 			continue
 		}
+		break
 	}
 
 	return fmt.Sprintf("%s/24", nextIP.String()), nil
@@ -132,14 +132,19 @@ func (c *Controller) PeerConnected(id uint32) error {
 	if err != nil {
 		return err
 	}
-	c.EventPeerConnected(id)
+	go c.EventPeerConnected(id)
 	return nil
 }
 
+// TODO: Still notify peers if store update fails???
 func (c *Controller) PeerDisconnected(id uint32) error {
+	err := c.store.UpdatePeerStatus(id, false)
+	if err != nil {
+		return err
+	}
 	c.DeletePeerUpdateChan(id)
-	c.EventPeerDisconnected(id)
-	return c.store.UpdatePeerStatus(id, false)
+	go c.EventPeerDisconnected(id)
+	return nil
 }
 
 func (c *Controller) GetConnectedPeers() ([]types.Peer, error) {

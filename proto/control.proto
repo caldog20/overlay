@@ -41,10 +41,10 @@ message EmptyResponse {}
 
 message RemotePeerList {
   uint32 count = 1;
-  repeated RemotePeer remote_peer = 2;
+  repeated Peer peers = 2;
 }
 
-message RemotePeer {
+message Peer {
   uint32 id = 1;
   string public_key = 2;
   string endpoint = 3;
