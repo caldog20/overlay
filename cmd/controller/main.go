@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	log.Println("Starting Controller...")
+	log.Println("starting controller...")
 	cmd.Execute()
 }

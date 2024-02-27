@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -20,8 +21,10 @@ import (
 )
 
 var (
-	storePath string
-	autoCert  bool
+	storePath     string
+	autoCert      bool
+	grpcPort      uint16
+	discoveryPort uint16
 
 	rootCmd = &cobra.Command{
 		Use:   "controller",
@@ -37,7 +40,7 @@ var (
 			}()
 
 			// TODO Implement config stuff/multiple commands
-
+			log.Printf("initializing sqlite store using store file: %s", storePath)
 			store, err := store.NewSqlStore(storePath)
 			if err != nil {
 				log.Fatal(err)
@@ -58,7 +61,8 @@ var (
 			eg, egCtx := errgroup.WithContext(ctx)
 
 			eg.Go(func() error {
-				conn, err := net.Listen("tcp", ":50000")
+				log.Printf("starting grpc server on port: %d", grpcPort)
+				conn, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 				if err != nil {
 					return err
 				}
@@ -66,7 +70,8 @@ var (
 			})
 
 			eg.Go(func() error {
-				err := discovery.StartDiscoveryServer(egCtx, 5050)
+				log.Printf("starting discovery server on port: %d", discoveryPort)
+				err := discovery.StartDiscoveryServer(egCtx, discoveryPort)
 				return err
 			})
 
@@ -79,6 +84,7 @@ var (
 				return nil
 			})
 
+			// Wait for all errgroup routines to finish before exiting
 			if err = eg.Wait(); err != nil {
 				log.Fatal(err)
 			}
@@ -89,6 +95,8 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVar(&storePath, "storepath", "store.db", "file path for controller store persistence")
 	rootCmd.PersistentFlags().BoolVar(&autoCert, "autocert", false, "enable autocert for controller")
+	rootCmd.PersistentFlags().Uint16Var(&grpcPort, "grpcport", 50000, "port to listen for grpc connections")
+	rootCmd.PersistentFlags().Uint16Var(&discoveryPort, "discoveryport", 5050, "port to listen for grpc connections")
 }
 
 // TODO handle signals and contextual things here
