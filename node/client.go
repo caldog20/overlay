@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/caldog20/overlay/node/conn"
-	"github.com/caldog20/overlay/proto"
+	proto "github.com/caldog20/overlay/proto/gen"
 	pb "google.golang.org/protobuf/proto"
 )
 

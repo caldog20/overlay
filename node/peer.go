@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/caldog20/overlay/proto"
+	proto "github.com/caldog20/overlay/proto/gen"
 	"github.com/flynn/noise"
 )
 

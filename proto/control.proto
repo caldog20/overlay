@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "awesomeProject/proto";
+option go_package = "github.com/caldog20/overlay/proto/gen;proto";
 
 service ControlPlane {
   rpc LoginPeer(LoginRequest) returns (LoginResponse) {}

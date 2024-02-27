@@ -1,0 +1,24 @@
+services:
+  controller:
+    build:
+      context: .
+      dockerfile: controller/Dockerfile
+      target: final
+    ports:
+      - 5050:5050/udp
+      - 50000:50000/tcp
+    volumes:
+      #      - controller-data:/usr/share/overlay/data
+      - type: bind
+        source: .
+        target: /home/overlay/data
+#  frontend:
+#    build:
+#      context: controller/frontend
+#      target: final
+#    ports:
+#      - 5173:8000
+
+
+volumes:
+  controller-data:

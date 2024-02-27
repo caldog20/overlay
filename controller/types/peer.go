@@ -1,9 +1,9 @@
-package controller
+package types
 
 import (
 	"time"
 
-	"github.com/caldog20/overlay/proto"
+	proto "github.com/caldog20/overlay/proto/gen"
 )
 
 type Peer struct {

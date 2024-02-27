@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	"github.com/caldog20/overlay/proto"
+	proto "github.com/caldog20/overlay/proto/gen"
 )
 
 type Node struct {
@@ -107,29 +107,35 @@ func NewNode(port uint16, controller string) (*Node, error) {
 	return node, nil
 }
 
-func (node *Node) Run(ctx context.Context) {
-	// Register with controller
-	err := node.Login()
-	if err != nil {
+func (node *Node) loginOrRegister() error {
+	if err := node.Login(); err != nil {
 		s, _ := status.FromError(err)
 		if s.Code() == codes.NotFound {
 			err = node.Register()
 			if err != nil {
-				panic(err)
-			}
-			err = node.Login()
-			if err != nil {
-				panic(err)
+				return err
+			} else {
+				return node.Login()
 			}
 		} else {
-			panic(err)
+			return err
 		}
+	}
+
+	return nil
+}
+
+func (node *Node) Run(ctx context.Context) error {
+	// Register with controller
+	err := node.loginOrRegister()
+	if err != nil {
+		return err
 	}
 
 	// Initially set endpoints
 	ep, err := node.DiscoverPublicEndpoint()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	node.SetRemoteEndpoint(ep)
@@ -137,7 +143,7 @@ func (node *Node) Run(ctx context.Context) {
 	// Configure tunnel ip/routes
 	err = node.tun.ConfigureIPAddress(node.ip)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	node.StartUpdateStream(ctx)
@@ -156,6 +162,7 @@ func (node *Node) Run(ctx context.Context) {
 	//		peer.cancel()
 	//	}
 	//}
+	return nil
 }
 
 func (node *Node) OnUDPPacket(buffer *InboundBuffer, index int) {

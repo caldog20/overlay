@@ -1,12 +1,13 @@
-package controller
+package discovery
 
 import (
 	"context"
 	"fmt"
 	"log"
 	"net"
+	"time"
 
-	"github.com/caldog20/overlay/proto"
+	proto "github.com/caldog20/overlay/proto/gen"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -30,6 +31,8 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 			return nil
 		default:
 		}
+
+		conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 		n, raddr, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			return nil

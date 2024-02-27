@@ -35,4 +35,6 @@ patches/
 *.db
 
 # Temporary
-Makefile
+#Makefile
+
+proto/gen

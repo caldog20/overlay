@@ -3,7 +3,8 @@ package controller
 import (
 	"errors"
 
-	"github.com/caldog20/overlay/proto"
+	"github.com/caldog20/overlay/controller/types"
+	proto "github.com/caldog20/overlay/proto/gen"
 )
 
 const (
@@ -68,7 +69,7 @@ func (c *Controller) EventPeerDisconnected(peerID uint32) {
 func (c *Controller) EventPunchRequest(peerID uint32, endpoint string) error {
 	// TODO actually validate endpoint
 	if endpoint == "" {
-		return ErrInvalidEndpoint
+		return types.ErrInvalidEndpoint
 	}
 
 	update := &proto.UpdateResponse{

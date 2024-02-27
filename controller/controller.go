@@ -1,13 +1,13 @@
 package controller
 
 import (
-	"context"
 	"fmt"
 	"net/netip"
 	"sync"
 
-	"github.com/caldog20/overlay/proto"
-	"golang.org/x/sync/errgroup"
+	store "github.com/caldog20/overlay/controller/store"
+	"github.com/caldog20/overlay/controller/types"
+	proto "github.com/caldog20/overlay/proto/gen"
 )
 
 const (
@@ -15,45 +15,22 @@ const (
 )
 
 type Controller struct {
-	store        Store
-	grpcServer   *GRPCServer
+	store        store.Store
 	prefix       netip.Prefix
 	peerChannels sync.Map
 
-	confg *Config
+	config *Config
 }
 
-func NewController(config *Config, store Store) *Controller {
-	c := new(Controller)
-	c.InitIPAM(Prefix)
-	c.confg = config
-
-	gserver := NewGRPCServer(config, c)
-
-	c.store = store
-	c.grpcServer = gserver
-	c.peerChannels = sync.Map{}
-	return c
-}
-
-func (c *Controller) Run(ctx context.Context) error {
-	eg, egCtx := errgroup.WithContext(ctx)
-
-	eg.Go(func() error {
-		return c.grpcServer.Run()
-	})
-
-	eg.Go(func() error {
-		<-egCtx.Done()
-		c.ClosePeerUpdateChannels()
-		c.grpcServer.server.GracefulStop()
-		return nil
-	})
-
-	if err := eg.Wait(); err != nil {
-		return err
+func NewController(store store.Store) *Controller {
+	c := &Controller{
+		store:        store,
+		peerChannels: sync.Map{},
+		// TODO: temporary
+		prefix: netip.MustParsePrefix(Prefix),
 	}
-	return nil
+
+	return c
 }
 
 // Provide main service functions agnostic of GRPC/Rest
@@ -61,7 +38,7 @@ func (c *Controller) Run(ctx context.Context) error {
 // LoginPeer logs in an existing peer by public key
 // If peer exists, returns peer configuration
 // If the peer is not registered or does not exist, returns nil peer and ErrNotFound
-func (c *Controller) LoginPeer(publicKey string) (*PeerConfig, error) {
+func (c *Controller) LoginPeer(publicKey string) (*types.PeerConfig, error) {
 	peer, err := c.store.GetPeerByKey(publicKey)
 	if err != nil {
 		return nil, err
@@ -77,7 +54,7 @@ func (c *Controller) RegisterPeer(publicKey string) error {
 	if err != nil {
 		return err
 	}
-	peer := &Peer{IP: ip, PublicKey: publicKey, Connected: false}
+	peer := &types.Peer{IP: ip, PublicKey: publicKey, Connected: false}
 
 	err = c.store.CreatePeer(peer)
 	if err != nil {
@@ -88,7 +65,7 @@ func (c *Controller) RegisterPeer(publicKey string) error {
 
 func (c *Controller) SetPeerEndpoint(id uint32, endpoint string) error {
 	if id == 0 {
-		return ErrInvalidPeerID
+		return types.ErrInvalidPeerID
 	}
 	err := c.store.UpdatePeerEndpoint(id, endpoint)
 	if err != nil {
@@ -165,7 +142,7 @@ func (c *Controller) PeerDisconnected(id uint32) error {
 	return c.store.UpdatePeerStatus(id, false)
 }
 
-func (c *Controller) GetConnectedPeers() ([]Peer, error) {
+func (c *Controller) GetConnectedPeers() ([]types.Peer, error) {
 	peers, err := c.store.GetConnectedPeers()
 	if err != nil {
 		return nil, err

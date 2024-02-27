@@ -1,22 +1,15 @@
-package controller
+package grpcservice
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
-	"fmt"
 	"log"
-	"net"
 
-	"golang.org/x/crypto/acme/autocert"
-	"google.golang.org/grpc"
+	controller "github.com/caldog20/overlay/controller"
+	"github.com/caldog20/overlay/controller/types"
+	proto "github.com/caldog20/overlay/proto/gen"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
-
-	"github.com/caldog20/overlay/proto"
 )
 
 const (
@@ -25,49 +18,14 @@ const (
 
 type GRPCServer struct {
 	proto.UnimplementedControlPlaneServer
-	controller *Controller
-	server     *grpc.Server
-	config     *Config
+	controller *controller.Controller
 }
 
-func NewGRPCServer(config *Config, controller *Controller) *GRPCServer {
-	grpcServer := new(GRPCServer)
-	grpcServer.config = config
-
-	var creds credentials.TransportCredentials
-
-	if config.AutoCert.Enabled {
-		am := &autocert.Manager{
-			Prompt:     autocert.AcceptTOS,
-			HostPolicy: autocert.HostWhitelist(config.AutoCert.Domain),
-			Cache:      autocert.DirCache(config.AutoCert.CacheDir),
-		}
-		creds = credentials.NewTLS(&tls.Config{GetCertificate: am.GetCertificate})
-		go AutocertHandler(am)
-	} else {
-		creds = insecure.NewCredentials()
+func NewGRPCServer(controller *controller.Controller) *GRPCServer {
+	return &GRPCServer{
+		controller: controller,
 	}
-
-	gserver := grpc.NewServer(grpc.Creds(creds))
-	proto.RegisterControlPlaneServer(gserver, grpcServer)
-	reflection.Register(gserver)
-
-	grpcServer.controller = controller
-	grpcServer.server = gserver
-
-	return grpcServer
 }
-
-func (s *GRPCServer) Run() error {
-	conn, err := net.Listen("tcp4", fmt.Sprintf(":%d", s.config.GrpcPort))
-	if err != nil {
-		return err
-	}
-
-	log.Printf("Starting grpc server on port: %d", s.config.GrpcPort)
-	return s.server.Serve(conn)
-}
-
 func (s *GRPCServer) LoginPeer(
 	ctx context.Context,
 	req *proto.LoginRequest,
@@ -79,7 +37,7 @@ func (s *GRPCServer) LoginPeer(
 
 	config, err := s.controller.LoginPeer(req.PublicKey)
 	if err != nil {
-		if err == ErrNotFound {
+		if err == types.ErrNotFound {
 			return nil, status.Error(codes.NotFound, "peer not registered")
 		} else {
 			return nil, status.Error(codes.Internal, err.Error())
@@ -101,7 +59,7 @@ func (s *GRPCServer) RegisterPeer(
 	}
 
 	if req.RegisterKey != TempRegisterKey {
-		return nil, ErrInvalidRegisterKey
+		return nil, types.ErrInvalidRegisterKey
 	}
 
 	err = s.controller.RegisterPeer(req.PublicKey)
@@ -223,12 +181,12 @@ func (s *GRPCServer) Punch(
 ) (*proto.EmptyResponse, error) {
 	err := validateID(req.ReqPeerId)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrInvalidPeerID.Error())
+		return nil, status.Error(codes.InvalidArgument, types.ErrInvalidPeerID.Error())
 	}
 
 	err = validateID(req.DstPeerId)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrInvalidPeerID.Error())
+		return nil, status.Error(codes.InvalidArgument, types.ErrInvalidPeerID.Error())
 	}
 
 	err = s.controller.EventPunchRequest(req.DstPeerId, req.Endpoint)
