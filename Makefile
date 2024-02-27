@@ -3,8 +3,12 @@ export CGO_ENABLED := 0
 
 BIN_DIR ?= bin
 
+PROTO_OUTPUT += proto/gen/control.pb.go
+PROTO_OUTPUT += proto/gen/control_grpc.pb.go
+
 all: controller node
-	env
+
+
 frontend:
 	@docker-compose up --build
 
@@ -21,7 +25,10 @@ run-controller: controller
 node: buf
 	go build -o $(BIN_DIR)/node cmd/node/main.go
 
-buf:
+buf: $(PROTO_OUTPUT)
+
+$(PROTO_OUTPUT): proto/control.proto
+	@echo Generating proto...
 	@buf generate
 
 buf-lint:
@@ -37,7 +44,7 @@ clean:
 	rm -rf proto/gen
 	rm -rf store.db
 
-.PHONY: all controller buf docker-controller deps frontend buf-lint clean node all
+.PHONY: all controller docker-controller deps frontend buf-lint clean node all
 
 
 
