@@ -1,8 +1,10 @@
 export GO111MODULE := on
-export CGO_ENABLED := off
+export CGO_ENABLED := 0
 
 BIN_DIR ?= bin
 
+all: controller node
+	env
 frontend:
 	@docker-compose up --build
 
@@ -15,6 +17,9 @@ controller: buf
 
 run-controller: controller
 	$(BIN_DIR)/controller
+
+node: buf
+	go build -o $(BIN_DIR)/node cmd/node/main.go
 
 buf:
 	@buf generate
@@ -32,7 +37,7 @@ clean:
 	rm -rf proto/gen
 	rm -rf store.db
 
-.PHONY: all controller buf docker-controller deps frontend buf-lint clean
+.PHONY: all controller buf docker-controller deps frontend buf-lint clean node all
 
 
 
