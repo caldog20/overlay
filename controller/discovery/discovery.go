@@ -2,26 +2,36 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 	pb "google.golang.org/protobuf/proto"
 )
 
-func StartDiscoveryServer(ctx context.Context, port uint16) error {
-	laddr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", port))
+type DiscoveryServer struct {
+	conn *net.UDPConn
+}
+
+func New(port uint16) (*DiscoveryServer, error) {
+	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	conn, err := net.ListenUDP("udp4", laddr)
+	conn, err := net.ListenUDP("udp4", addr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	return &DiscoveryServer{
+		conn: conn,
+	}, nil
+}
+
+func (s *DiscoveryServer) Listen(ctx context.Context) error {
 	buf := make([]byte, 1500)
 
 	for {
@@ -29,42 +39,47 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 		case <-ctx.Done():
 			return nil
 		default:
-		}
 
-		conn.SetReadDeadline(time.Now().Add(time.Second * 2))
-		n, raddr, err := conn.ReadFromUDP(buf)
-		if err != nil {
-			if err, ok := err.(net.Error); ok && err.Timeout() {
+			n, raddr, err := s.conn.ReadFromUDP(buf)
+			if err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					return nil
+				}
+				log.Printf("discovery server udp socket error: %s", err)
 				continue
 			}
-			return nil
-		}
-		log.Printf("received discovery packet from %s", raddr.String())
+			//log.Printf("received discovery packet from %s", raddr.String())
 
-		_, err = parseDiscoveryMessage(buf[:n])
-		if err != nil {
-			log.Printf("error parsing discovery message: %s", err)
-			continue
-		}
-		//if msg.Id == 0 {
-		//	log.Printf("discovery request ID must not be zero")
-		//	continue
-		//}
-		//_, ok := c.peerChannels.Load(msg.Id)
-		//if !ok {
-		//	continue
-		//}
+			_, err = parseDiscoveryMessage(buf[:n])
+			if err != nil {
+				log.Printf("error parsing discovery message: %s", err)
+				continue
+			}
 
-		reply, err := encodeDiscoveryResponse(raddr.String())
-		if err != nil {
-			log.Printf("error encoding discovery reply message: %s", err)
-			continue
-		}
-		_, err = conn.WriteToUDP(reply, raddr)
-		if err != nil {
-			log.Printf("error sending discovery reply message to peer %s : %s", raddr.String(), err)
+			//if msg.Id == 0 {
+			//	log.Printf("discovery request ID must not be zero")
+			//	continue
+			//}
+			//_, ok := c.peerChannels.Load(msg.Id)
+			//if !ok {
+			//	continue
+			//}
+
+			reply, err := encodeDiscoveryResponse(raddr.String())
+			if err != nil {
+				log.Printf("error encoding discovery reply message: %s", err)
+				continue
+			}
+			_, err = s.conn.WriteToUDP(reply, raddr)
+			if err != nil {
+				log.Printf("error sending discovery reply message to peer %s : %s", raddr.String(), err)
+			}
 		}
 	}
+}
+
+func (s *DiscoveryServer) Stop() error {
+	return s.conn.Close()
 }
 
 func parseDiscoveryMessage(b []byte) (*controllerv1.EndpointDiscovery, error) {

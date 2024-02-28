@@ -35,12 +35,12 @@ var (
 			go func() {
 				sigchan := make(chan os.Signal, 1)
 				signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-				log.Printf("Received %v signal, shutting down\n", <-sigchan)
+				log.Printf("Received %v signal, shutting down services\n", <-sigchan)
 				cancel()
 			}()
 
 			// TODO Implement config stuff/multiple commands
-			log.Printf("initializing sqlite store using store file: %s", storePath)
+			log.Printf("initializing sqlite store using file: %s", storePath)
 			store, err := store.New(storePath)
 			if err != nil {
 				log.Fatal(err)
@@ -58,6 +58,12 @@ var (
 			controllerv1.RegisterControllerServiceServer(server, grpcServer)
 			reflection.Register(server)
 
+			// Discovery Server
+			discovery, err := discovery.New(discoveryPort)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			eg, egCtx := errgroup.WithContext(ctx)
 
 			eg.Go(func() error {
@@ -71,7 +77,7 @@ var (
 
 			eg.Go(func() error {
 				log.Printf("starting discovery server on port: %d", discoveryPort)
-				err := discovery.StartDiscoveryServer(egCtx, discoveryPort)
+				err := discovery.Listen(egCtx)
 				return err
 			})
 
@@ -81,7 +87,8 @@ var (
 				ctrl.ClosePeerUpdateChannels()
 
 				server.GracefulStop()
-				return nil
+				err := discovery.Stop()
+				return err
 			})
 
 			// Wait for all errgroup routines to finish before exiting
