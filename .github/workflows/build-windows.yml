@@ -39,7 +39,7 @@ jobs:
         run: make buf
 
       - name: build node
-        run: CGO_ENABLED=0 go build -o /dev/null ./cmd/node
+        run: go build -o /dev/null ./cmd/node
 
       #- name: Test
       # run: go test
