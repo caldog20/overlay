@@ -140,7 +140,7 @@ func (node *Node) HandleUpdate(update *proto.UpdateResponse) {
 }
 
 func (node *Node) handlePeerPunchRequest(update *proto.UpdateResponse) {
-	endpoint := update.PeerList.RemotePeer[0].Endpoint
+	endpoint := update.PeerList.Peers[0].Endpoint
 	ua, err := net.ResolveUDPAddr(conn.UDPType, endpoint)
 	if err != nil {
 		log.Printf("error parsing udp punch address: %s", err)
@@ -160,7 +160,7 @@ func (node *Node) handlePeerPunchRequest(update *proto.UpdateResponse) {
 }
 
 func (node *Node) handleInitialSync(update *proto.UpdateResponse) {
-	for _, peer := range update.PeerList.RemotePeer {
+	for _, peer := range update.PeerList.Peers {
 		p, err := node.AddPeer(peer)
 		if err != nil {
 			panic(err)
@@ -181,7 +181,7 @@ func (node *Node) handlePeerConnectUpdate(update *proto.UpdateResponse) {
 		return
 	}
 
-	rp := update.PeerList.RemotePeer[0]
+	rp := update.PeerList.Peers[0]
 
 	node.maps.l.RLock()
 	p, found := node.maps.id[rp.Id]
@@ -206,7 +206,7 @@ func (node *Node) handlePeerConnectUpdate(update *proto.UpdateResponse) {
 }
 
 // // TODO Fix variable naming and compares
-func (peer *Peer) Update(info *proto.RemotePeer) error {
+func (peer *Peer) Update(info *proto.Peer) error {
 	peer.mu.RLock()
 	currentEndpoint := peer.raddr.AddrPort()
 	currentKey := peer.noise.pubkey

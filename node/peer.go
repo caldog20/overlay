@@ -99,7 +99,7 @@ func NewPeer() *Peer {
 }
 
 // TODO Proper error text for context around the issue
-func (node *Node) AddPeer(peerInfo *proto.RemotePeer) (*Peer, error) {
+func (node *Node) AddPeer(peerInfo *proto.Peer) (*Peer, error) {
 	peer := NewPeer()
 
 	peer.mu.Lock()
