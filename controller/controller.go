@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"net/netip"
+	"slices"
 	"sync"
 
 	store "github.com/caldog20/overlay/controller/store"
@@ -90,14 +91,19 @@ func (c *Controller) AllocateIP() (string, error) {
 	}
 	// Skip zero address
 	nextIP = c.prefix.Addr().Next()
-	// Loop through allocated IPs until we find one free
-	for _, ip := range ips {
-		p := netip.MustParsePrefix(ip)
-		if p.Addr() == nextIP {
+
+	var used []netip.Addr
+
+	for _, usedIP := range ips {
+		used = append(used, netip.MustParsePrefix(usedIP).Addr())
+	}
+
+	for {
+		if slices.Contains(used, nextIP) {
 			nextIP = nextIP.Next()
-			continue
+		} else {
+			break
 		}
-		break
 	}
 
 	return fmt.Sprintf("%s/24", nextIP.String()), nil

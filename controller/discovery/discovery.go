@@ -34,6 +34,9 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 		conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 		n, raddr, err := conn.ReadFromUDP(buf)
 		if err != nil {
+			if err, ok := err.(net.Error); ok && err.Timeout() {
+				continue
+			}
 			return nil
 		}
 		log.Printf("received discovery packet from %s", raddr.String())
