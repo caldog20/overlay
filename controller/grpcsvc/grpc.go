@@ -7,7 +7,7 @@ import (
 
 	"github.com/caldog20/overlay/controller"
 	"github.com/caldog20/overlay/controller/types"
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -17,7 +17,7 @@ const (
 )
 
 type GRPCServer struct {
-	proto.UnimplementedControlPlaneServer
+	controllerv1.UnimplementedControllerServiceServer
 	controller *controller.Controller
 }
 
@@ -29,8 +29,8 @@ func NewGRPCServer(controller *controller.Controller) *GRPCServer {
 
 func (s *GRPCServer) LoginPeer(
 	ctx context.Context,
-	req *proto.LoginRequest,
-) (*proto.LoginResponse, error) {
+	req *controllerv1.LoginRequest,
+) (*controllerv1.LoginResponse, error) {
 	err := validatePublicKey(req.PublicKey)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "public key is invalid")
@@ -47,13 +47,13 @@ func (s *GRPCServer) LoginPeer(
 
 	cfg := peer.ProtoConfig()
 
-	return &proto.LoginResponse{Config: cfg}, nil
+	return &controllerv1.LoginResponse{Config: cfg}, nil
 }
 
 func (s *GRPCServer) RegisterPeer(
 	ctx context.Context,
-	req *proto.RegisterRequest,
-) (*proto.RegisterResponse, error) {
+	req *controllerv1.RegisterRequest,
+) (*controllerv1.RegisterResponse, error) {
 	err := validatePublicKey(req.PublicKey)
 	if err != nil {
 		return nil, err
@@ -68,14 +68,14 @@ func (s *GRPCServer) RegisterPeer(
 		return nil, err
 	}
 
-	return &proto.RegisterResponse{}, nil
+	return &controllerv1.RegisterResponse{}, nil
 }
 
 // TODO Authentication/encryption for messages
 func (s *GRPCServer) SetPeerEndpoint(
 	ctx context.Context,
-	endpoint *proto.Endpoint,
-) (*proto.EmptyResponse, error) {
+	endpoint *controllerv1.Endpoint,
+) (*controllerv1.Empty, error) {
 	err := validateID(endpoint.Id)
 	if err != nil {
 		return nil, err
@@ -91,12 +91,12 @@ func (s *GRPCServer) SetPeerEndpoint(
 		return nil, err
 	}
 
-	return &proto.EmptyResponse{}, nil
+	return &controllerv1.Empty{}, nil
 }
 
 func (s *GRPCServer) Update(
-	req *proto.UpdateRequest,
-	stream proto.ControlPlane_UpdateServer,
+	req *controllerv1.UpdateRequest,
+	stream controllerv1.ControllerService_UpdateServer,
 ) error {
 	err := validateID(req.Id)
 	if err != nil {
@@ -121,9 +121,9 @@ func (s *GRPCServer) Update(
 		return err
 	}
 
-	initialSync := &proto.UpdateResponse{
-		UpdateType: proto.UpdateResponse_INIT,
-		PeerList: &proto.RemotePeerList{
+	initialSync := &controllerv1.UpdateResponse{
+		UpdateType: controllerv1.UpdateResponse_INIT,
+		PeerList: &controllerv1.RemotePeerList{
 			Count: uint32(len(peers)),
 			Peers: peers,
 		},
@@ -154,18 +154,18 @@ func (s *GRPCServer) Update(
 	}
 }
 
-func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*proto.Peer, error) {
+func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*controllerv1.Peer, error) {
 	peers, err := s.controller.GetConnectedPeers()
 	if err != nil {
 		return nil, err
 	}
 
-	var rp []*proto.Peer
+	var rp []*controllerv1.Peer
 	for _, p := range peers {
 		if p.ID == connectingPeerID {
 			continue
 		}
-		rp = append(rp, &proto.Peer{
+		rp = append(rp, &controllerv1.Peer{
 			Id:        p.ID,
 			PublicKey: p.PublicKey,
 			Endpoint:  p.Endpoint,
@@ -178,8 +178,8 @@ func (s *GRPCServer) GetInitialPeerList(connectingPeerID uint32) ([]*proto.Peer,
 
 func (s *GRPCServer) Punch(
 	ctx context.Context,
-	req *proto.PunchRequest,
-) (*proto.EmptyResponse, error) {
+	req *controllerv1.PunchRequest,
+) (*controllerv1.Empty, error) {
 	err := validateID(req.ReqPeerId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, types.ErrInvalidPeerID.Error())
@@ -195,5 +195,5 @@ func (s *GRPCServer) Punch(
 		return nil, status.Error(codes.Internal, "error processing punch request")
 	}
 
-	return &proto.EmptyResponse{}, nil
+	return &controllerv1.Empty{}, nil
 }

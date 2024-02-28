@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -64,8 +64,8 @@ func StartDiscoveryServer(ctx context.Context, port uint16) error {
 	}
 }
 
-func parseDiscoveryMessage(b []byte) (*proto.EndpointDiscovery, error) {
-	msg := &proto.EndpointDiscovery{}
+func parseDiscoveryMessage(b []byte) (*controllerv1.EndpointDiscovery, error) {
+	msg := &controllerv1.EndpointDiscovery{}
 	err := pb.Unmarshal(b, msg)
 	if err != nil {
 		return nil, err
@@ -74,6 +74,6 @@ func parseDiscoveryMessage(b []byte) (*proto.EndpointDiscovery, error) {
 }
 
 func encodeDiscoveryResponse(endpoint string) ([]byte, error) {
-	msg := &proto.EndpointDiscoveryResponse{Endpoint: endpoint}
+	msg := &controllerv1.EndpointDiscoveryResponse{Endpoint: endpoint}
 	return pb.Marshal(msg)
 }

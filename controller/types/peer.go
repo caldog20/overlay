@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 )
 
 type Peer struct {
@@ -21,8 +21,8 @@ func NewPeer(id uint32, key string, ip string, endpoint string) *Peer {
 	return &Peer{ID: id, PublicKey: key, IP: ip, Endpoint: endpoint, Connected: false}
 }
 
-func (p *Peer) Proto() *proto.Peer {
-	return &proto.Peer{
+func (p *Peer) Proto() *controllerv1.Peer {
+	return &controllerv1.Peer{
 		Id:        p.ID,
 		PublicKey: p.PublicKey,
 		Endpoint:  p.Endpoint,
@@ -30,8 +30,8 @@ func (p *Peer) Proto() *proto.Peer {
 	}
 }
 
-func (p *Peer) ProtoConfig() *proto.PeerConfig {
-	return &proto.PeerConfig{Id: p.ID, TunnelIp: p.IP}
+func (p *Peer) ProtoConfig() *controllerv1.PeerConfig {
+	return &controllerv1.PeerConfig{Id: p.ID, TunnelIp: p.IP}
 }
 
 func (p *Peer) Copy() Peer {

@@ -13,7 +13,7 @@ import (
 	"github.com/caldog20/overlay/controller/discovery"
 	"github.com/caldog20/overlay/controller/grpcsvc"
 	"github.com/caldog20/overlay/controller/store"
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -55,7 +55,7 @@ var (
 			// GRPC Server
 			grpcServer := grpcsvc.NewGRPCServer(ctrl)
 			server := grpc.NewServer()
-			proto.RegisterControlPlaneServer(server, grpcServer)
+			controllerv1.RegisterControllerServiceServer(server, grpcServer)
 			reflection.Register(server)
 
 			eg, egCtx := errgroup.WithContext(ctx)

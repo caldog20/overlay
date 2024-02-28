@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/caldog20/overlay/proto/gen;controllerv1";
+
+message PeerConfig {
+  uint32 id = 1;
+  string tunnel_ip = 2;
+}
+
+message Peer {
+  uint32 id = 1;
+  string public_key = 2;
+  string endpoint = 3;
+  string tunnel_ip = 4;
+}
+
+
+message RemotePeerList {
+  uint32 count = 1;
+  repeated Peer peers = 2;
+}
+
+message UpdateRequest {
+  uint32 id = 1;
+}
+
+message UpdateResponse {
+  enum UpdateType {
+    INIT = 0;
+    CONNECT = 1;
+    DISCONNECT = 2;
+    PUNCH = 3;
+  }
+
+  UpdateType update_type = 1;
+  RemotePeerList peer_list = 2;
+}
+
+message PunchRequest {
+  uint32 req_peer_id = 1;
+  uint32 dst_peer_id = 2;
+  string endpoint = 3;
+}
+
+message PunchNotification {
+  string endpoint = 1;
+}
+

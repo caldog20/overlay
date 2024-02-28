@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/caldog20/overlay/node/conn"
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 	pb "google.golang.org/protobuf/proto"
 )
 
@@ -20,7 +20,7 @@ func (node *Node) Login() error {
 	defer node.noise.l.Unlock()
 
 	pubkey := base64.StdEncoding.EncodeToString(node.noise.keyPair.Public)
-	login, err := node.controller.LoginPeer(context.TODO(), &proto.LoginRequest{PublicKey: pubkey})
+	login, err := node.controller.LoginPeer(context.TODO(), &controllerv1.LoginRequest{PublicKey: pubkey})
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (node *Node) Login() error {
 func (node *Node) DiscoverPublicEndpoint() (string, error) {
 	buf := make([]byte, 1500)
 
-	dis := &proto.EndpointDiscovery{Id: node.id}
+	dis := &controllerv1.EndpointDiscovery{Id: node.id}
 	out, err := pb.Marshal(dis)
 	if err != nil {
 		log.Fatal(err)
@@ -52,7 +52,7 @@ func (node *Node) DiscoverPublicEndpoint() (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	reply := &proto.EndpointDiscoveryResponse{}
+	reply := &controllerv1.EndpointDiscoveryResponse{}
 	err = pb.Unmarshal(buf[:n], reply)
 	if err != nil {
 		log.Fatal(err)
@@ -65,7 +65,7 @@ func (node *Node) DiscoverPublicEndpoint() (string, error) {
 }
 
 func (node *Node) SetRemoteEndpoint(endpoint string) {
-	_, err := node.controller.SetPeerEndpoint(context.TODO(), &proto.Endpoint{
+	_, err := node.controller.SetPeerEndpoint(context.TODO(), &controllerv1.Endpoint{
 		Id:       node.id,
 		Endpoint: endpoint,
 	})
@@ -79,7 +79,7 @@ func (node *Node) Register() error {
 	defer node.noise.l.RUnlock()
 	pubkey := base64.StdEncoding.EncodeToString(node.noise.keyPair.Public)
 
-	regmsg := &proto.RegisterRequest{
+	regmsg := &controllerv1.RegisterRequest{
 		PublicKey:   pubkey,
 		RegisterKey: "registermeplz!",
 	}
@@ -93,7 +93,7 @@ func (node *Node) Register() error {
 }
 
 func (node *Node) StartUpdateStream(ctx context.Context) {
-	stream, err := node.controller.Update(context.Background(), &proto.UpdateRequest{
+	stream, err := node.controller.Update(context.Background(), &controllerv1.UpdateRequest{
 		Id: node.id,
 	})
 	if err != nil {
@@ -123,15 +123,15 @@ func (node *Node) StartUpdateStream(ctx context.Context) {
 	}()
 }
 
-func (node *Node) HandleUpdate(update *proto.UpdateResponse) {
+func (node *Node) HandleUpdate(update *controllerv1.UpdateResponse) {
 	switch update.UpdateType {
-	case proto.UpdateResponse_INIT:
+	case controllerv1.UpdateResponse_INIT:
 		node.handleInitialSync(update)
-	case proto.UpdateResponse_CONNECT:
+	case controllerv1.UpdateResponse_CONNECT:
 		node.handlePeerConnectUpdate(update)
-	case proto.UpdateResponse_DISCONNECT:
+	case controllerv1.UpdateResponse_DISCONNECT:
 		//node.handlePeerDisconnectUpdate(update)
-	case proto.UpdateResponse_PUNCH:
+	case controllerv1.UpdateResponse_PUNCH:
 		node.handlePeerPunchRequest(update)
 	default:
 		log.Println("unmatched update message type")
@@ -139,7 +139,7 @@ func (node *Node) HandleUpdate(update *proto.UpdateResponse) {
 	}
 }
 
-func (node *Node) handlePeerPunchRequest(update *proto.UpdateResponse) {
+func (node *Node) handlePeerPunchRequest(update *controllerv1.UpdateResponse) {
 	endpoint := update.PeerList.Peers[0].Endpoint
 	ua, err := net.ResolveUDPAddr(conn.UDPType, endpoint)
 	if err != nil {
@@ -159,7 +159,7 @@ func (node *Node) handlePeerPunchRequest(update *proto.UpdateResponse) {
 	log.Printf("sent punch message to udp address: %s", ua.String())
 }
 
-func (node *Node) handleInitialSync(update *proto.UpdateResponse) {
+func (node *Node) handleInitialSync(update *controllerv1.UpdateResponse) {
 	for _, peer := range update.PeerList.Peers {
 		p, err := node.AddPeer(peer)
 		if err != nil {
@@ -173,11 +173,11 @@ func (node *Node) handleInitialSync(update *proto.UpdateResponse) {
 	}
 }
 
-func (node *Node) handlePeerConnectUpdate(update *proto.UpdateResponse) {
+func (node *Node) handlePeerConnectUpdate(update *controllerv1.UpdateResponse) {
 	if update.PeerList.Count < 1 {
 		return
 	}
-	if update.UpdateType != proto.UpdateResponse_CONNECT {
+	if update.UpdateType != controllerv1.UpdateResponse_CONNECT {
 		return
 	}
 
@@ -206,7 +206,7 @@ func (node *Node) handlePeerConnectUpdate(update *proto.UpdateResponse) {
 }
 
 // // TODO Fix variable naming and compares
-func (peer *Peer) Update(info *proto.Peer) error {
+func (peer *Peer) Update(info *controllerv1.Peer) error {
 	peer.mu.RLock()
 	currentEndpoint := peer.raddr.AddrPort()
 	currentKey := peer.noise.pubkey
@@ -275,7 +275,7 @@ func (peer *Peer) Update(info *proto.Peer) error {
 
 func (node *Node) RequestPunch(id uint32) {
 	// TODO Fix response for requesting punches
-	_, err := node.controller.Punch(context.Background(), &proto.PunchRequest{
+	_, err := node.controller.Punch(context.Background(), &controllerv1.PunchRequest{
 		ReqPeerId: node.id,
 		DstPeerId: id,
 		Endpoint:  node.discoveredEndpoint.String(),
@@ -291,7 +291,7 @@ func (node *Node) RequestPunch(id uint32) {
 //	h := NewHeader()
 //	for {
 //		time.Sleep(time.Second * 2)
-//		resp, err := node.controller.PunchChecker(context.Background(), &proto.PunchCheck{
+//		resp, err := node.controller.PunchChecker(context.Background(), &controllerv1.PunchCheck{
 //			ReqId: node.id,
 //		})
 //

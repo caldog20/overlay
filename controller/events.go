@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/caldog20/overlay/controller/types"
-	proto "github.com/caldog20/overlay/proto/gen"
+	proto "github.com/caldog20/overlay/proto/gen/controller/v1"
 )
 
 const (

@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 )
 
 type Node struct {
@@ -45,7 +45,7 @@ type Node struct {
 
 	running atomic.Bool
 
-	controller proto.ControlPlaneClient
+	controller controllerv1.ControllerServiceClient
 	// Temp
 	port           uint16
 	controllerAddr string
@@ -101,7 +101,7 @@ func NewNode(port uint16, controller string) (*Node, error) {
 		log.Fatal("error connecting to controller grpc: ", err)
 	}
 
-	node.controller = proto.NewControlPlaneClient(gconn)
+	node.controller = controllerv1.NewControllerServiceClient(gconn)
 
 	node.controllerAddr = controller
 	return node, nil

@@ -7,7 +7,7 @@ import (
 
 	store "github.com/caldog20/overlay/controller/store"
 	"github.com/caldog20/overlay/controller/types"
-	proto "github.com/caldog20/overlay/proto/gen"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 )
 
 const (
@@ -103,8 +103,8 @@ func (c *Controller) AllocateIP() (string, error) {
 	return fmt.Sprintf("%s/24", nextIP.String()), nil
 }
 
-func (c *Controller) GetPeerUpdateChan(id uint32) chan *proto.UpdateResponse {
-	pc := make(chan *proto.UpdateResponse, 10)
+func (c *Controller) GetPeerUpdateChan(id uint32) chan *controllerv1.UpdateResponse {
+	pc := make(chan *controllerv1.UpdateResponse, 10)
 	c.peerChannels.Store(id, pc)
 	return pc
 }
@@ -114,14 +114,14 @@ func (c *Controller) DeletePeerUpdateChan(id uint32) {
 	if !loaded {
 		return
 	}
-	peerChan := pc.(chan *proto.UpdateResponse)
+	peerChan := pc.(chan *controllerv1.UpdateResponse)
 
 	close(peerChan)
 }
 
 func (c *Controller) ClosePeerUpdateChannels() {
 	c.peerChannels.Range(func(k, v interface{}) bool {
-		pc := v.(chan *proto.UpdateResponse)
+		pc := v.(chan *controllerv1.UpdateResponse)
 		close(pc)
 		return true
 	})
