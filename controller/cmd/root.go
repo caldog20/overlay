@@ -41,7 +41,7 @@ var (
 
 			// TODO Implement config stuff/multiple commands
 			log.Printf("initializing sqlite store using store file: %s", storePath)
-			store, err := store.NewSqlStore(storePath)
+			store, err := store.New(storePath)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -38,7 +38,7 @@ func (s *GRPCServer) LoginPeer(
 
 	peer, err := s.controller.LoginPeer(req.PublicKey)
 	if err != nil {
-		if err == types.ErrNotFound {
+		if errors.Is(err, types.ErrNotFound) {
 			return nil, status.Error(codes.NotFound, "peer not registered")
 		} else {
 			return nil, status.Error(codes.Internal, err.Error())

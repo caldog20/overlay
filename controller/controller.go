@@ -15,14 +15,14 @@ const (
 )
 
 type Controller struct {
-	store        store.Store
+	store        *store.Store
 	prefix       netip.Prefix
 	peerChannels sync.Map
 
 	config *Config
 }
 
-func NewController(store store.Store) *Controller {
+func NewController(store *store.Store) *Controller {
 	c := &Controller{
 		store:        store,
 		peerChannels: sync.Map{},
