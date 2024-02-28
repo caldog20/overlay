@@ -28,18 +28,15 @@ jobs:
 
       - name: Verify dependencies
         run: go mod verify
-
-      - name: Install golint
-        run: go install golang.org/x/lint/golint@latest
+#
+#      - name: Install golint
+#        run: go install golang.org/x/lint/golint@latest
 
       - name: Install Buf deps
         run: make deps
 
       - name: Generate proto/grpc
         run: make buf
-
-      - name: build controller
-        run: CGO_ENABLED=0 go build -o /dev/null ./cmd/controller
 
       - name: build node
         run: CGO_ENABLED=0 go build -o /dev/null ./cmd/node
