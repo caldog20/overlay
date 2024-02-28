@@ -37,7 +37,7 @@ func New(path string) (*Store, error) {
 		return nil, err
 	}
 
-	err = db.AutoMigrate(&types.Peer{})
+	err = db.AutoMigrate(&types.Peer{}, &types.User{})
 
 	return &Store{db: db}, nil
 }

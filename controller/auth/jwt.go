@@ -12,7 +12,7 @@ var (
 	ErrParsingToken  = errors.New("error parsing jwt token")
 )
 
-var jwtKey []byte
+var jwtKey = []byte("SUPERSECRETKEY")
 
 type Claims struct {
 	User string
