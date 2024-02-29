@@ -59,10 +59,9 @@ func NewNode(port uint16, controller string) (*Node, error) {
 	// Try to load key from disk
 	keypair, err := LoadKeyFromDisk()
 	if err != nil {
-		keypair, err = CipherSuite.GenerateKeypair(nil)
-		err = StoreKeyToDisk(keypair)
+		err = GenerateNewKeypairToDisk()
 		if err != nil {
-			log.Fatal("error storing keypair to disk")
+			log.Fatal(err)
 		}
 	}
 

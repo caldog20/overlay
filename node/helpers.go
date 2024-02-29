@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/netip"
 	"os"
 
@@ -14,6 +15,22 @@ import (
 type Key struct {
 	Public  string `yaml:"PublicKey"`
 	Private string `yaml:"PrivateKey"`
+}
+
+func GenerateNewKeypairToDisk() error {
+	fmt.Println("generating new noise keypair")
+	keypair, err := CipherSuite.GenerateKeypair(nil)
+	if err != nil {
+		return err
+	}
+	err = StoreKeyToDisk(keypair)
+	if err != nil {
+		return err
+	}
+	fmt.Println("WARNING! Do not share private key")
+	fmt.Println("public key: ", base64.StdEncoding.EncodeToString(keypair.Public))
+	fmt.Println("private key: ", base64.StdEncoding.EncodeToString(keypair.Private))
+	return nil
 }
 
 func LoadKeyFromDisk() (noise.DHKey, error) {

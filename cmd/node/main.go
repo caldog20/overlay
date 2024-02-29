@@ -1,13 +1,10 @@
 package main
 
 import (
-	"log"
-
 	"github.com/caldog20/overlay/node/cmd"
 )
 
 func main() {
-	log.Println("Starting node...")
 	cmd.Execute()
 }
 
