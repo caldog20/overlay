@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/caldog20/overlay/controller"
+	"github.com/caldog20/overlay/controller/auth"
 	"github.com/caldog20/overlay/controller/discovery"
 	"github.com/caldog20/overlay/controller/grpcsvc"
 	"github.com/caldog20/overlay/controller/store"
@@ -54,7 +55,7 @@ var (
 
 			// GRPC Server
 			grpcServer := grpcsvc.NewGRPCServer(ctrl)
-			server := grpc.NewServer()
+			server := grpc.NewServer(grpc.UnaryInterceptor(auth.UnaryInterceptorLogger))
 			controllerv1.RegisterControllerServiceServer(server, grpcServer)
 			reflection.Register(server)
 

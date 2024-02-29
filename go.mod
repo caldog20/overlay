@@ -6,6 +6,7 @@ require (
 	github.com/flynn/noise v1.0.1-0.20220214164934-d803f5c4b0f4
 	github.com/glebarez/sqlite v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/joeshaw/envdecode v0.0.0-20200121155833-099f1fc765bd
 	github.com/joho/godotenv v1.5.1
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
