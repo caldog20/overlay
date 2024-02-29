@@ -59,7 +59,7 @@ func NewNode(port uint16, controller string) (*Node, error) {
 	// Try to load key from disk
 	keypair, err := LoadKeyFromDisk()
 	if err != nil {
-		err = GenerateNewKeypairToDisk()
+		keypair, err = GenerateNewKeypair()
 		if err != nil {
 			log.Fatal(err)
 		}

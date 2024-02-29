@@ -12,6 +12,15 @@ services:
       - type: bind
         source: .
         target: /home/overlay/data
+  node:
+    privileged: true
+    build:
+      context: .
+      dockerfile: node/Dockerfile
+      target: final
+    environment:
+      - 'CONTROLLER=10.170.241.193:50000'
+      - 'HOME=/root'
 #  frontend:
 #    build:
 #      context: controller/frontend

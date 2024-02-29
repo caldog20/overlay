@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,target=. \
     make deps && \
     make buf && \
-    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/controller cmd/controller/main.go
+    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/node cmd/node/main.go
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
@@ -56,28 +56,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
         update-ca-certificates
 
 
-
-# Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/go/dockerfile-user-best-practices/
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/home/overlay" \
-    --shell "/sbin/nologin" \
-    #--no-create-home \
-    --uid "${UID}" \
-    overlay
-USER overlay
-
-RUN mkdir -p /home/overlay/data
-
 # Copy the executable from the "build" stage.
-COPY --from=build /bin/controller /bin/
-
-# Expose the port that the application listens on.
-EXPOSE 5000/udp
-EXPOSE 50000/udp
-
+COPY --from=build /bin/node /bin/
+USER root
 # What the container should run when it is started.
-ENTRYPOINT [ "/bin/controller", "--storepath", "/home/overlay/data/store.db" ]
+ENTRYPOINT [ "/bin/node", "run", "--controller", "10.170.241.193:50000"]

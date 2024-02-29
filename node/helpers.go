@@ -17,20 +17,20 @@ type Key struct {
 	Private string `yaml:"PrivateKey"`
 }
 
-func GenerateNewKeypairToDisk() error {
+func GenerateNewKeypair() (noise.DHKey, error) {
 	fmt.Println("generating new noise keypair")
 	keypair, err := CipherSuite.GenerateKeypair(nil)
 	if err != nil {
-		return err
+		return noise.DHKey{}, err
 	}
 	err = StoreKeyToDisk(keypair)
 	if err != nil {
-		return err
+		return noise.DHKey{}, err
 	}
 	fmt.Println("WARNING! Do not share private key")
 	fmt.Println("public key: ", base64.StdEncoding.EncodeToString(keypair.Public))
 	fmt.Println("private key: ", base64.StdEncoding.EncodeToString(keypair.Private))
-	return nil
+	return keypair, nil
 }
 
 func LoadKeyFromDisk() (noise.DHKey, error) {

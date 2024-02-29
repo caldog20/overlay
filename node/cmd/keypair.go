@@ -12,7 +12,7 @@ func NewGenerateKeypairCommand() *cobra.Command {
 		Use:   "generate",
 		Short: "generate's new keypair and saves to disk",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := node.GenerateNewKeypairToDisk()
+			_, err := node.GenerateNewKeypair()
 			if err != nil {
 				fmt.Println(err)
 			}
