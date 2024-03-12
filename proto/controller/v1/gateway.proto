@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/caldog20/overlay/proto/gen;controllerv1";
+import "controller/v1/peer.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+// Maybe pass JWT/Token in request instead of header to simplify GRPC across
+// both Services
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info : {version : "1.0"};
+external_docs : {
+url:
+  "https://github.com/caldog20/overlay";
+description:
+  "overlay vpn";
+}
+schemes : HTTPS;
+}
+;
+
+service GatewayService {
+  rpc GetPeers(EmptyRequest) returns (GetPeersResponse) {
+    option (google.api.http) = {
+      // Route to this method from GET requests to /api/v1/users
+      get : "/api/v1/peers"
+      response_body : "peers"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary : "List peers"
+      description : "Get a list of peers"
+      tags : "Peers"
+    };
+  }
+  rpc GetPeer(GetPeerRequest) returns (GetPeerResponse) {}
+  rpc GetToken(GetTokenRequest) returns (GetTokenResponse) {}
+}
+
+message EmptyRequest {}
+
+message GetPeerRequest { uint32 peer_id = 1; }
+
+message GetPeerResponse { Peer peer = 1; }
+
+message GetPeersRequest {}
+
+message GetPeersResponse {
+  uint32 count = 1;
+  repeated Peer peers = 2;
+}
+
+message GetTokenRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message GetTokenResponse { string token = 1; }

@@ -16,15 +16,12 @@ message Peer {
   string tunnel_ip = 4;
 }
 
-
 message RemotePeerList {
   uint32 count = 1;
   repeated Peer peers = 2;
 }
 
-message UpdateRequest {
-  uint32 id = 1;
-}
+message UpdateRequest { uint32 id = 1; }
 
 message UpdateResponse {
   enum UpdateType {
@@ -44,7 +41,4 @@ message PunchRequest {
   string endpoint = 3;
 }
 
-message PunchNotification {
-  string endpoint = 1;
-}
-
+message PunchNotification { string endpoint = 1; }

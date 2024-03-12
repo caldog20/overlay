@@ -98,6 +98,7 @@ func (c *Controller) AllocateIP() (string, error) {
 		used = append(used, netip.MustParsePrefix(usedIP).Addr())
 	}
 
+	// Loop over usedIP slice for each candidate IP to ensure no conflicts
 	for {
 		if slices.Contains(used, nextIP) {
 			nextIP = nextIP.Next()

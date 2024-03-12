@@ -15,13 +15,9 @@ service ControllerService {
 
 message Empty {}
 
-message LoginRequest {
-  string public_key = 1;
-}
+message LoginRequest { string public_key = 1; }
 
-message LoginResponse {
-  PeerConfig config = 1;
-}
+message LoginResponse { PeerConfig config = 1; }
 
 message RegisterRequest {
   string public_key = 1;
@@ -35,11 +31,6 @@ message Endpoint {
   string endpoint = 2;
 }
 
-message EndpointDiscovery {
-  uint32 id = 1;
-}
+message EndpointDiscovery { uint32 id = 1; }
 
-message EndpointDiscoveryResponse {
-  string endpoint = 1;
-}
-
+message EndpointDiscoveryResponse { string endpoint = 1; }

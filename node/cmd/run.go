@@ -9,9 +9,10 @@ import (
 	"runtime/pprof"
 	"syscall"
 
-	"github.com/caldog20/overlay/node"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/caldog20/overlay/node"
 )
 
 var (
@@ -43,7 +44,6 @@ func NewRunCommand() *cobra.Command {
 			}
 
 			eg.Go(func() error {
-				// TODO: Change to return error
 				return localNode.Run(egCtx)
 			})
 
@@ -63,8 +63,10 @@ func NewRunCommand() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&controller, "controller", "127.0.0.1:50000", "controller address in <ip:port> format")
-	cmd.PersistentFlags().Uint16Var(&port, "port", 0, "listen port for udp socket - defaults to 0 for randomly selected port")
+	cmd.PersistentFlags().
+		StringVar(&controller, "controller", "127.0.0.1:50000", "controller address in <ip:port> format")
+	cmd.PersistentFlags().
+		Uint16Var(&port, "port", 0, "listen port for udp socket - defaults to 0 for randomly selected port")
 	cmd.PersistentFlags().BoolVar(&profile, "profile", false, "enable pprof profile")
 
 	return cmd
