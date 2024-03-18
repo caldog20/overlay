@@ -7,8 +7,10 @@ import (
 	"log"
 	"net"
 
-	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 	pb "google.golang.org/protobuf/proto"
+
+	"github.com/caldog20/overlay/pkg/header"
+	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 )
 
 type DiscoveryServer struct {
@@ -33,7 +35,7 @@ func New(port uint16) (*DiscoveryServer, error) {
 
 func (s *DiscoveryServer) Listen(ctx context.Context) error {
 	buf := make([]byte, 1500)
-
+	h := header.NewHeader()
 	for {
 		select {
 		case <-ctx.Done():
@@ -50,7 +52,18 @@ func (s *DiscoveryServer) Listen(ctx context.Context) error {
 			}
 			//log.Printf("received discovery packet from %s", raddr.String())
 
-			_, err = parseDiscoveryMessage(buf[:n])
+			err = h.Parse(buf)
+			if err != nil {
+				log.Printf("error parsing discovery header: %s", err)
+				continue
+			}
+
+			if h.Type != header.Discovery {
+				log.Print("message does not have a discovery header")
+				continue
+			}
+
+			_, err = parseDiscoveryMessage(buf[header.HeaderLen:n])
 			if err != nil {
 				log.Printf("error parsing discovery message: %s", err)
 				continue
@@ -65,14 +78,24 @@ func (s *DiscoveryServer) Listen(ctx context.Context) error {
 			//	continue
 			//}
 
-			reply, err := encodeDiscoveryResponse(raddr.String())
+			out, err := h.Encode(buf[0:], header.Discovery, 0, 1)
+			if err != nil {
+				log.Printf("error encoding header for discovery reply: %s", err)
+				continue
+			}
+
+			reply, err := encodeDiscoveryResponse(out, raddr.String())
 			if err != nil {
 				log.Printf("error encoding discovery reply message: %s", err)
 				continue
 			}
 			_, err = s.conn.WriteToUDP(reply, raddr)
 			if err != nil {
-				log.Printf("error sending discovery reply message to peer %s : %s", raddr.String(), err)
+				log.Printf(
+					"error sending discovery reply message to peer %s : %s",
+					raddr.String(),
+					err,
+				)
 			}
 		}
 	}
@@ -91,7 +114,12 @@ func parseDiscoveryMessage(b []byte) (*controllerv1.EndpointDiscovery, error) {
 	return msg, nil
 }
 
-func encodeDiscoveryResponse(endpoint string) ([]byte, error) {
+func encodeDiscoveryResponse(out []byte, endpoint string) ([]byte, error) {
 	msg := &controllerv1.EndpointDiscoveryResponse{Endpoint: endpoint}
-	return pb.Marshal(msg)
+	encoded, err := pb.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, encoded...)
+	return out, nil
 }

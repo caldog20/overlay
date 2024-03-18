@@ -1,4 +1,4 @@
-package node
+package header
 
 import (
 	"encoding/binary"
@@ -20,6 +20,7 @@ const (
 	Reset     uint8 = 3 // Redundant?
 	Rekey     uint8 = 4
 	Close     uint8 = 5
+	Discovery uint8 = 6
 	Punch     uint8 = 0xff
 )
 
@@ -32,8 +33,7 @@ type Header struct {
 }
 
 func NewHeader() *Header {
-	h := new(Header)
-	return h
+	return &Header{}
 }
 
 func (h *Header) Reset() {
@@ -104,5 +104,12 @@ func (h *Header) String() string {
 		return "<nil>"
 	}
 
-	return fmt.Sprintf("header: {version: %d, type: %d, index: %d, counter :%d, padding: #%x", h.Version, h.Type, h.SenderIndex, h.Counter, h.Padding)
+	return fmt.Sprintf(
+		"header: {version: %d, type: %d, index: %d, counter :%d, padding: #%x",
+		h.Version,
+		h.Type,
+		h.SenderIndex,
+		h.Counter,
+		h.Padding,
+	)
 }

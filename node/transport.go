@@ -4,6 +4,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	"github.com/caldog20/overlay/pkg/header"
 )
 
 func (peer *Peer) contextDone() bool {
@@ -27,7 +29,11 @@ func (peer *Peer) Inbound() {
 		}
 		peer.pendingLock.RLock()
 		peer.noise.rx.SetNonce(buffer.header.Counter)
-		buffer.packet, err = peer.noise.rx.Decrypt(buffer.packet[:0], nil, buffer.in[HeaderLen:buffer.size])
+		buffer.packet, err = peer.noise.rx.Decrypt(
+			buffer.packet[:0],
+			nil,
+			buffer.in[header.HeaderLen:buffer.size],
+		)
 		if err != nil {
 			log.Println("decrypt failed")
 			PutInboundBuffer(buffer)
@@ -60,7 +66,12 @@ func (peer *Peer) Outbound() {
 		}
 
 		peer.pendingLock.RLock()
-		out, err := buffer.header.Encode(buffer.out, Data, peer.node.id, peer.noise.tx.Nonce())
+		out, err := buffer.header.Encode(
+			buffer.out,
+			header.Data,
+			peer.node.id,
+			peer.noise.tx.Nonce(),
+		)
 		out, err = peer.noise.tx.Encrypt(out, nil, buffer.packet[:buffer.size])
 		if err != nil {
 			log.Println("encrypt failed")
@@ -239,7 +250,7 @@ func (peer *Peer) Handshake() {
 
 func (peer *Peer) handshakeP1(buffer *OutboundBuffer) {
 	// encode header
-	final, _ := buffer.header.Encode(buffer.out, Handshake, peer.node.id, 0)
+	final, _ := buffer.header.Encode(buffer.out, header.Handshake, peer.node.id, 0)
 
 	final, _, _, err := peer.noise.hs.WriteMessage(final, nil)
 	if err != nil {
@@ -259,7 +270,10 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 
 	var err error
 	if peer.noise.initiator {
-		_, peer.noise.tx, peer.noise.rx, err = peer.noise.hs.ReadMessage(nil, buffer.in[HeaderLen:buffer.size])
+		_, peer.noise.tx, peer.noise.rx, err = peer.noise.hs.ReadMessage(
+			nil,
+			buffer.in[header.HeaderLen:buffer.size],
+		)
 		if err != nil {
 			return err
 		}
@@ -274,7 +288,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 		}
 
 		// Read handshake init and response
-		_, _, _, err = peer.noise.hs.ReadMessage(nil, buffer.in[HeaderLen:buffer.size])
+		_, _, _, err = peer.noise.hs.ReadMessage(nil, buffer.in[header.HeaderLen:buffer.size])
 		if err != nil {
 			return err
 		}
@@ -283,7 +297,7 @@ func (peer *Peer) handshakeP2(buffer *InboundBuffer) error {
 
 		outbuf := GetOutboundBuffer()
 		defer PutOutboundBuffer(outbuf)
-		final, _ := outbuf.header.Encode(outbuf.out, Handshake, peer.node.id, 1)
+		final, _ := outbuf.header.Encode(outbuf.out, header.Handshake, peer.node.id, 1)
 		final, peer.noise.rx, peer.noise.tx, err = peer.noise.hs.WriteMessage(final, nil)
 		if err != nil {
 			return err

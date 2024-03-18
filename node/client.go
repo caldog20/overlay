@@ -4,15 +4,13 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"net"
 	"net/netip"
-	"time"
 
 	"github.com/caldog20/overlay/node/conn"
+	"github.com/caldog20/overlay/pkg/header"
 	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
-	pb "google.golang.org/protobuf/proto"
 )
 
 func (node *Node) Login() error {
@@ -20,7 +18,10 @@ func (node *Node) Login() error {
 	defer node.noise.l.Unlock()
 
 	pubkey := base64.StdEncoding.EncodeToString(node.noise.keyPair.Public)
-	login, err := node.controller.LoginPeer(context.TODO(), &controllerv1.LoginRequest{PublicKey: pubkey})
+	login, err := node.controller.LoginPeer(
+		context.TODO(),
+		&controllerv1.LoginRequest{PublicKey: pubkey},
+	)
 	if err != nil {
 		return err
 	}
@@ -31,47 +32,15 @@ func (node *Node) Login() error {
 	return nil
 }
 
-// TODO change this to eventually be a proper STUN request
-func (node *Node) DiscoverPublicEndpoint() (string, error) {
-	buf := make([]byte, 1500)
-
-	dis := &controllerv1.EndpointDiscovery{Id: node.id}
-	out, err := pb.Marshal(dis)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	addr, _, _ := net.SplitHostPort(node.controllerAddr)
-	ua, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", addr, 5050))
-	node.conn.WriteToUDP(out, ua)
-
-	node.conn.SetReadDeadline(time.Now().Add(time.Second * 2))
-	n, _, err := node.conn.ReadFromUDP(buf)
-	node.conn.SetReadDeadline(time.Time{})
-
-	if err != nil {
-		log.Fatal(err)
-	}
-	reply := &controllerv1.EndpointDiscoveryResponse{}
-	err = pb.Unmarshal(buf[:n], reply)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// TODO fix this
-	node.discoveredEndpoint = netip.MustParseAddrPort(reply.Endpoint)
-
-	return reply.Endpoint, nil
-}
-
-func (node *Node) SetRemoteEndpoint(endpoint string) {
+func (node *Node) SetRemoteEndpoint(endpoint string) error {
 	_, err := node.controller.SetPeerEndpoint(context.TODO(), &controllerv1.Endpoint{
 		Id:       node.id,
 		Endpoint: endpoint,
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
 func (node *Node) Register() error {
@@ -148,9 +117,9 @@ func (node *Node) handlePeerPunchRequest(update *controllerv1.UpdateResponse) {
 	}
 	punch := make([]byte, 16)
 
-	h := NewHeader()
+	h := header.NewHeader()
 
-	punch, err = h.Encode(punch, Punch, node.id, 0)
+	punch, err = h.Encode(punch, header.Punch, node.id, 0)
 	if err != nil {
 		log.Println("error encoding header for punch message")
 	}
@@ -285,30 +254,3 @@ func (node *Node) RequestPunch(id uint32) {
 		return
 	}
 }
-
-//func (node *Node) CheckPunches() {
-//	buf := make([]byte, 20)
-//	h := NewHeader()
-//	for {
-//		time.Sleep(time.Second * 2)
-//		resp, err := node.controller.PunchChecker(context.Background(), &controllerv1.PunchCheck{
-//			ReqId: node.id,
-//		})
-//
-//		if err == nil {
-//			raddr, err := net.ResolveUDPAddr(UDPType, resp.Remote)
-//			if err != nil {
-//				log.Println(err)
-//				continue
-//			}
-//			punch, err := h.Encode(buf, Punch, node.id, 0xff)
-//
-//			// Send 2 for good measure
-//			for i := 0; i < 2; i++ {
-//				node.conn.WriteToUDP(punch, raddr)
-//			}
-//
-//			log.Printf("sent punch message to peer: %s", raddr.String())
-//		}
-//	}
-//}

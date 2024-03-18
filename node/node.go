@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/netip"
@@ -11,8 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	conn "github.com/caldog20/overlay/node/conn"
-	tun "github.com/caldog20/overlay/node/tun"
 	"github.com/flynn/noise"
 	"golang.org/x/net/ipv4"
 	"google.golang.org/grpc"
@@ -20,6 +19,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
+	conn "github.com/caldog20/overlay/node/conn"
+	tun "github.com/caldog20/overlay/node/tun"
+	"github.com/caldog20/overlay/pkg/header"
 	controllerv1 "github.com/caldog20/overlay/proto/gen/controller/v1"
 )
 
@@ -47,8 +49,9 @@ type Node struct {
 
 	controller controllerv1.ControllerServiceClient
 	// Temp
-	port           uint16
-	controllerAddr string
+	port                        uint16
+	controllerAddr              string
+	controllerDiscoveryEndpoint *net.UDPAddr
 }
 
 func NewNode(port uint16, controller string) (*Node, error) {
@@ -95,7 +98,12 @@ func NewNode(port uint16, controller string) (*Node, error) {
 
 	// TODO Fix this/move when fixing login/register flow
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
-	gconn, err := grpc.DialContext(ctx, controller, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	gconn, err := grpc.DialContext(
+		ctx,
+		controller,
+		grpc.WithBlock(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		log.Fatal("error connecting to controller grpc: ", err)
 	}
@@ -103,6 +111,17 @@ func NewNode(port uint16, controller string) (*Node, error) {
 	node.controller = controllerv1.NewControllerServiceClient(gconn)
 
 	node.controllerAddr = controller
+
+	addr, _, err := net.SplitHostPort(node.controllerAddr)
+	if err != nil {
+		log.Fatalf("error parsing controller address: %s", err)
+	}
+	da, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", addr, 5050))
+	if err != nil {
+		log.Fatal("error resolving controller udp address: %s", err)
+	}
+	node.controllerDiscoveryEndpoint = da
+
 	return node, nil
 }
 
@@ -131,25 +150,22 @@ func (node *Node) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Initially set endpoints
-	ep, err := node.DiscoverPublicEndpoint()
-	if err != nil {
-		return err
-	}
-
-	node.SetRemoteEndpoint(ep)
-
 	// Configure tunnel ip/routes
 	err = node.tun.ConfigureIPAddress(node.ip)
 	if err != nil {
 		return err
 	}
 
-	node.StartUpdateStream(ctx)
+	// Initially set endpoints
+	err = node.SendDiscoveryRequest()
+	if err != nil {
+		return err
+	}
 
 	go node.ReadUDPPackets(node.OnUDPPacket, 0)
 	go node.ReadTunPackets(node.OnTunnelPacket)
 
+	node.StartUpdateStream(ctx)
 	// TODO
 	<-ctx.Done()
 
@@ -164,6 +180,23 @@ func (node *Node) Run(ctx context.Context) error {
 	return nil
 }
 
+func (node *Node) lookupPeer(id uint32) (*Peer, bool) {
+	node.maps.l.RLock()
+	peer, found := node.maps.id[id]
+	node.maps.l.RUnlock()
+
+	if !found {
+		return nil, false
+	}
+
+	// TODO temporary sanity check if peer is somehow nil
+	if peer == nil {
+		panic("Peer is nil")
+	}
+
+	return peer, true
+}
+
 func (node *Node) OnUDPPacket(buffer *InboundBuffer, index int) {
 	err := buffer.header.Parse(buffer.in)
 	if err != nil {
@@ -175,42 +208,44 @@ func (node *Node) OnUDPPacket(buffer *InboundBuffer, index int) {
 	// Lookup Peer based on index
 	sender := buffer.header.SenderIndex
 
-	node.maps.l.RLock()
-	peer, found := node.maps.id[sender]
-	node.maps.l.RUnlock()
-
-	if !found {
-		// TODO FIgure out logic when peer not found
-		// Peer not found in table, ask for update and try again later?
-		PutInboundBuffer(buffer)
-		log.Printf("[inbound] peer with index %d not found", sender)
-		//node.UpdateNodes()
-		return
-	}
-
-	// TODO temporary sanity check if peer is somehow nil
-	if peer == nil {
-		log.Fatal("Peer is nil")
-	}
-
-	buffer.peer = peer
 	// Peer found, check message type and handle accordingly
 	switch buffer.header.Type {
 	// Remote peer sent handshake message
-	case Handshake:
+	case header.Handshake:
+		peer, found := node.lookupPeer(sender)
+		if !found {
+			PutInboundBuffer(buffer)
+			log.Printf("[inbound] peer with index %d not found", sender)
+			return
+		}
+		buffer.peer = peer
+
 		// Callee responsible to returning buffer to pool
 		if peer.running.Load() {
 			peer.handshakes <- buffer
 		}
 		return
 	// Remote peer sent encrypted data
-	case Data:
+	case header.Data:
 		// Callee responsible to returning buffer to pool
+		peer, found := node.lookupPeer(sender)
+		if !found {
+			PutInboundBuffer(buffer)
+			log.Printf("[inbound] peer with index %d not found", sender)
+			return
+		}
+		buffer.peer = peer
+
 		peer.InboundPacket(buffer)
 		return
 	// Remote peer sent punch packet
-	case Punch:
+	case header.Punch:
 		log.Printf("[inbound] received punch packet from peer %d", sender)
+		PutInboundBuffer(buffer)
+		return
+	case header.Discovery:
+		// Logic to process stun/discovery responses
+		node.HandleDiscoveryResponse(buffer)
 		PutInboundBuffer(buffer)
 		return
 	default:
